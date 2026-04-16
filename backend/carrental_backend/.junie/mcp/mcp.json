@@ -1,0 +1,11 @@
+{
+    "mcpServers": {
+        "laravel-boost": {
+            "command": "/Users/user/Library/Application Support/Herd/bin/php84",
+            "args": [
+                "/Users/user/Desktop/CarRentalPro/backend/carrental_backend/artisan",
+                "boost:mcp"
+            ]
+        }
+    }
+}
