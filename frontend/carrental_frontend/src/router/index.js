@@ -29,12 +29,12 @@ const routes = [
   {
     path: '/auth/login',
     name: 'Login',
-    component: () => import('../auth/LoginView.vue')
+    component: () => import('../views/login/LoginView.vue')
   },
   {
     path: '/auth/register',
     name: 'Register',
-    component: () => import('../auth/RegisterView.vue')
+    component: () => import('../views/login/RegisterView.vue')
   },
   {
     path: '/admin',

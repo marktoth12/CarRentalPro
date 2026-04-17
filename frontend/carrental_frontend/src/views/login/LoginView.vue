@@ -1,7 +1,7 @@
 <script>
 import { ref } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
-import {useAuth} from "../auth/useAuth.js";
+import {useAuth} from "../../auth/useAuth.js";
 export default {
   name: 'LoginView',
   components: {
