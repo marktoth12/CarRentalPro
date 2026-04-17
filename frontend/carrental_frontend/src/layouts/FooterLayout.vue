@@ -37,9 +37,9 @@ export default {
         <div class="col-md-3">
           <h6 class="heading">Információ</h6>
           <ul class="list">
-            <li><RouterLink to="/policies/privacy" class="link">Adatvédelem</RouterLink></li>
-            <li><RouterLink to="/policies/aszf" class="link">ÁSZF</RouterLink></li>
-            <li><RouterLink to="/policies/cookie" class="link">Sütik</RouterLink></li>
+            <li><RouterLink to="/policies/privacy" class="link">Adatvédelmi szabályzat</RouterLink></li>
+            <li><RouterLink to="/policies/aszf" class="link">Általános Szerződési Feltételek</RouterLink></li>
+            <li><RouterLink to="/policies/cookie" class="link">Süti szabályzat</RouterLink></li>
           </ul>
         </div>
 

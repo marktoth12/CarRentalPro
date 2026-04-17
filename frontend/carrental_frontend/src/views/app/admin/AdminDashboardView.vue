@@ -12,6 +12,7 @@ export default {
       pendingApprovals: 0
     })
     const vehicles = ref([])
+    const users = ref([])
     const loading = ref(true)
     const activeTab = ref('overview')
 
@@ -20,6 +21,11 @@ export default {
         const vehiclesResponse = await axios.get('http://localhost:8000/api/vehicles')
         vehicles.value = vehiclesResponse.data.data || vehiclesResponse.data
         stats.value.totalVehicles = vehicles.value.length
+
+        const usersResponse = await axios.get('http://localhost:8000/api/users')
+        users.value = usersResponse.data.data || usersResponse.data
+        stats.value.totalUsers = users.value.length
+
         loading.value = false
       } catch (err) {
         console.error(err)
@@ -30,6 +36,7 @@ export default {
     return {
       stats,
       vehicles,
+      users,
       loading,
       activeTab
     }
@@ -38,18 +45,18 @@ export default {
 </script>
 
 <template>
-  <div class="admin-dashboard-wrapper">
-    <div class="container py-5">
+  <div class="admin-dashboard-wrapper py-5">
+    <div class="container">
 
       <header class="dashboard-header mb-5">
         <div class="row align-items-center">
-          <div class="col-md-6 text-center text-md-start">
+          <div class="col-md-6">
             <h2 class="fw-bold text-success mb-0">
               <i class="bi bi-speedometer2 me-2"></i>Adminisztrációs Irányítópult
             </h2>
           </div>
-          <div class="col-md-6 text-center text-md-end d-none d-md-block">
-            <p class="text-muted mb-0">Üdvözlünk az adminisztrációs panelben!</p>
+          <div class="col-md-6 text-md-end">
+            <p class="text-muted mb-0">Utolsó frissítés: <strong>2026. 04. 17.</strong></p>
           </div>
         </div>
       </header>
@@ -90,7 +97,7 @@ export default {
           <ul class="nav nav-pills gap-2">
             <li class="nav-item">
               <button class="nav-link" :class="{ active: activeTab === 'overview' }" @click="activeTab = 'overview'">
-                <i class="bi bi-graph-up me-2"></i>Áttekintés
+                <i class="bi bi-graph-up-arrow me-2"></i>Áttekintés
               </button>
             </li>
             <li class="nav-item">
@@ -105,7 +112,7 @@ export default {
             </li>
             <li class="nav-item">
               <button class="nav-link" :class="{ active: activeTab === 'rentals' }" @click="activeTab = 'rentals'">
-                <i class="bi bi-calendar me-2"></i>Bérlések
+                <i class="bi bi-calendar-event me-2"></i>Bérlések
               </button>
             </li>
           </ul>
@@ -117,7 +124,7 @@ export default {
             <h5 class="fw-bold text-success mb-4">Rendszer Áttekintése</h5>
             <div class="row g-4 mb-4">
               <div class="col-md-6">
-                <div class="admin-info-box">
+                <div class="admin-info-box h-100">
                   <h6 class="text-success fw-bold mb-3">Adatbázis Státusz</h6>
                   <p><strong>Szerver:</strong> <span class="badge bg-success-soft">Aktív</span></p>
                   <p><strong>Adatbázis:</strong> <span class="badge bg-success-soft">Csatlakoztatva</span></p>
@@ -125,33 +132,24 @@ export default {
                 </div>
               </div>
               <div class="col-md-6">
-                <div class="admin-info-box">
+                <div class="admin-info-box h-100">
                   <h6 class="text-success fw-bold mb-3">Rendszer Információ</h6>
                   <p><strong>Verzió:</strong> 1.0.0</p>
-                  <p><strong>Utolsó Frissítés:</strong> 2026. április 16.</p>
-                  <p class="mb-0"><strong>Környezet:</strong> Fejlesztés</p>
+                  <p><strong>Utolsó Frissítés:</strong> 2026. 04. 17.</p>
+                  <p class="mb-0"><strong>Környezet:</strong> Produkciós</p>
                 </div>
               </div>
             </div>
-
-            <div class="system-actions">
-              <h6 class="fw-bold mb-3">Rendszer Műveletek</h6>
-              <div class="d-flex gap-2 flex-wrap">
-                <button class="btn btn-success rounded-pill px-4">
-                  <i class="bi bi-plus-circle me-2"></i>Új Jármű
-                </button>
-                <button class="btn btn-outline-secondary rounded-pill px-4">
-                  <i class="bi bi-database me-2"></i>Biztonsági Mentés
-                </button>
-              </div>
+            <h6 class="fw-bold mb-3">Gyors Műveletek</h6>
+            <div class="d-flex gap-2">
+              <button class="btn btn-success rounded-pill px-4"><i class="bi bi-plus-circle me-2"></i>Új jármű</button>
+              <button class="btn btn-outline-secondary rounded-pill px-4"><i class="bi bi-database me-2"></i>Mentés</button>
             </div>
           </div>
 
           <div v-if="activeTab === 'vehicles'" class="fade-in">
             <h5 class="fw-bold text-success mb-4">Járművek Kezelése</h5>
-            <div v-if="loading" class="text-center py-5">
-              <div class="spinner-border text-success" role="status"></div>
-            </div>
+            <div v-if="loading" class="text-center py-5"><div class="spinner-border text-success"></div></div>
             <div v-else class="table-responsive">
               <table class="table admin-table mb-0">
                 <thead>
@@ -160,7 +158,7 @@ export default {
                   <th>Rendszám</th>
                   <th>Napi Ár</th>
                   <th>Állapot</th>
-                  <th>Jóváhagyás</th>
+                  <th>Jóváhagyva</th>
                   <th class="text-end">Műveletek</th>
                 </tr>
                 </thead>
@@ -170,15 +168,17 @@ export default {
                   <td><span class="badge bg-light text-dark border">{{ vehicle.license_plate }}</span></td>
                   <td class="text-success fw-bold">€{{ vehicle.daily_rate }}</td>
                   <td>
-                    <span v-if="vehicle.is_available" class="badge bg-success-soft">Elérhető</span>
-                    <span v-else class="badge bg-danger-soft">Foglalt</span>
+                      <span :class="['badge', vehicle.is_available ? 'bg-success-soft' : 'bg-danger-soft']">
+                        {{ vehicle.is_available ? 'Elérhető' : 'Foglalt' }}
+                      </span>
                   </td>
                   <td>
-                    <span v-if="vehicle.is_approved" class="badge bg-primary-soft">Jóváhagyva</span>
-                    <span v-else class="badge bg-warning-soft">Függőben</span>
+                      <span :class="['badge', vehicle.is_approved ? 'bg-primary-soft' : 'bg-warning-soft']">
+                        {{ vehicle.is_approved ? 'Igen' : 'Függőben' }}
+                      </span>
                   </td>
                   <td class="text-end">
-                    <button class="btn btn-sm btn-icon-only me-2"><i class="bi bi-pencil text-success"></i></button>
+                    <button class="btn btn-sm btn-icon-only me-1"><i class="bi bi-pencil-square text-success"></i></button>
                     <button class="btn btn-sm btn-icon-only"><i class="bi bi-trash text-danger"></i></button>
                   </td>
                 </tr>
@@ -188,7 +188,7 @@ export default {
           </div>
 
           <div v-if="activeTab === 'users'" class="fade-in">
-            <h5 class="fw-bold text-success mb-4">Felhasználók Kezelése</h5>
+            <h5 class="fw-bold text-success mb-4">Felhasználók Listája</h5>
             <div class="table-responsive">
               <table class="table admin-table mb-0">
                 <thead>
@@ -201,13 +201,13 @@ export default {
                 </tr>
                 </thead>
                 <tbody>
-                <tr>
-                  <td class="fw-bold">Admin Felhasználó</td>
-                  <td>admin@carrentalpro.com</td>
-                  <td><span class="badge bg-danger-soft text-danger">Admin</span></td>
-                  <td><span class="badge bg-success-soft text-success">Aktív</span></td>
+                <tr v-for="user in users" :key="user.id">
+                  <td class="fw-bold">{{ user.name }}</td>
+                  <td>{{ user.email }}</td>
+                  <td><span class="badge bg-danger-soft">{{ user.role || 'User' }}</span></td>
+                  <td><span class="badge bg-success-soft">{{ user.is_active ? 'Aktív' : 'Inaktív' }}</span></td>
                   <td class="text-end">
-                    <button class="btn btn-sm btn-icon-only"><i class="bi bi-pencil text-success"></i></button>
+                    <button class="btn btn-sm btn-icon-only"><i class="bi bi-pencil-square text-success"></i></button>
                   </td>
                 </tr>
                 </tbody>
@@ -215,9 +215,12 @@ export default {
             </div>
           </div>
 
-          <div v-if="activeTab === 'rentals'" class="fade-in text-center py-5">
-            <i class="bi bi-info-circle text-muted fs-2 d-block mb-3"></i>
-            <p class="text-muted mb-0">Jelenleg nincs aktív bérlés a rendszerben.</p>
+          <div v-if="activeTab === 'rentals'" class="fade-in">
+            <h5 class="fw-bold text-success mb-4">Bérlések Kezelése</h5>
+            <div class="text-center py-5 text-muted border rounded-3 bg-light">
+              <i class="bi bi-calendar2-x fs-2 d-block mb-2"></i>
+              <p>Jelenleg nincsenek aktív bérlések a rendszerben.</p>
+            </div>
           </div>
 
         </div>
@@ -230,7 +233,6 @@ export default {
 .admin-dashboard-wrapper {
   background-color: #f8f9fa;
   min-height: 100vh;
-  padding-bottom: 3rem;
 }
 
 .custom-stat-card {
@@ -255,12 +257,11 @@ export default {
   border-radius: 20px;
   box-shadow: 0 10px 30px rgba(0,0,0,0.05);
   overflow: hidden;
-  height: auto;
 }
 
 .admin-tabs-header {
   background: #fdfdfd;
-  padding: 1.25rem 1.5rem;
+  padding: 1.25rem;
   border-bottom: 1px solid #eee;
 }
 
@@ -275,15 +276,13 @@ export default {
 .nav-pills .nav-link.active {
   background-color: #198754;
   color: white;
-  box-shadow: 0 4px 10px rgba(25, 135, 84, 0.2);
 }
 
 .admin-table thead th {
   background-color: #f8f9fa;
-  border: none;
   color: #198754;
   padding: 1rem;
-  font-weight: 600;
+  border: none;
 }
 
 .admin-table tbody td {
@@ -294,15 +293,14 @@ export default {
 
 .bg-success-soft { background-color: #e6f4ea; color: #198754; }
 .bg-danger-soft { background-color: #fce8e6; color: #d93025; }
-.bg-warning-soft { background-color: #fff4e5; color: #ff9800; }
 .bg-primary-soft { background-color: #e7f1ff; color: #0d6efd; }
+.bg-warning-soft { background-color: #fff4e5; color: #ff9800; }
 
 .admin-info-box {
   background: #f8f9fa;
   padding: 1.5rem;
   border-radius: 15px;
   border-left: 5px solid #198754;
-  height: auto;
 }
 
 .btn-icon-only {

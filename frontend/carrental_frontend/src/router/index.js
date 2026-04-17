@@ -50,6 +50,21 @@ const routes = [
     path: '/my-rentals',
     name: 'MyRentals',
     component: () => import('../views/app/user/MyRentalsView.vue')
+  },
+  {
+    path: '/policies/aszf',
+    name: 'Aszf',
+    component: () => import('../policies/aszf.vue')
+  },
+  {
+    path: '/policies/privacy',
+    name: 'Privacy',
+    component: () => import('../policies/privacy.vue')
+  },
+  {
+    path: '/policies/cookie',
+    name: 'Cookie',
+    component: () => import('../policies/cookie.vue')
   }
 ]
 
