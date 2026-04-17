@@ -1,7 +1,7 @@
 <script>
-import MenuLayout from "@/layouts/NavbarLayout.vue";
-import FooterLayout from "@/layouts/FooterLayout.vue";
-import "@/styles/global.css";
+import NavbarLayout from "./layouts/NavbarLayout.vue";
+import FooterLayout from "./layouts/FooterLayout.vue";
+import "./styles/global.css";
 
 export default {
   name: "App",

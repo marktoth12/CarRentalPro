@@ -1,6 +1,6 @@
 <script>
 import { RouterLink, useRouter } from 'vue-router'
-import { useAuth } from '@/composables/useAuth'
+import {useAuth} from "../auth/useAuth.js";
 import { onMounted } from 'vue'
 
 export default {
