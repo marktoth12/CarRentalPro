@@ -7,7 +7,6 @@ export default {
   name: 'VehiclesView',
   setup() {
     const router = useRouter()
-
     const vehicles = ref([])
     const loading = ref(true)
     const error = ref(null)
@@ -15,12 +14,23 @@ export default {
     const selectedFuelType = ref('')
     const selectedTransmission = ref('')
     const minPrice = ref(0)
-    const maxPrice = ref(10000)
+    const maxPrice = ref(1000000)
+
+    const fuelTranslations = {
+      'petrol': 'Benzin',
+      'diesel': 'Dízel',
+      'electric': 'Elektromos',
+      'hybrid': 'Hibrid'
+    }
+
+    const formatPrice = (price) => {
+      return new Intl.NumberFormat('hu-HU').format(price) + ' Ft'
+    }
 
     onMounted(async () => {
       try {
         const res = await axios.get('http://localhost:8000/api/vehicles')
-        vehicles.value = res.data.data || res.data
+        vehicles.value = Array.isArray(res.data) ? res.data : []
       } catch (err) {
         error.value = 'Nem sikerült betölteni a járműveket'
       } finally {
@@ -32,7 +42,8 @@ export default {
       return vehicles.value.filter(v => {
         const fuel = !selectedFuelType.value || v.fuel_type === selectedFuelType.value
         const trans = !selectedTransmission.value || v.transmission_type === selectedTransmission.value
-        const price = v.daily_rate >= minPrice.value && v.daily_rate <= maxPrice.value
+        const rate = Number(v.daily_rate)
+        const price = rate >= minPrice.value && rate <= maxPrice.value
         return fuel && trans && price
       })
     })
@@ -49,7 +60,9 @@ export default {
       minPrice,
       maxPrice,
       filteredVehicles,
-      viewVehicle
+      viewVehicle,
+      fuelTranslations,
+      formatPrice
     }
   }
 }
@@ -99,11 +112,11 @@ export default {
           </select>
 
           <label class="form-label">
-            Ár: {{ minPrice }} - {{ maxPrice }} $
+            Ár: {{ formatPrice(minPrice) }} - {{ formatPrice(maxPrice) }}
           </label>
 
           <input type="range" class="form-range mb-2" v-model.number="minPrice" min="0" max="500">
-          <input type="range" class="form-range" v-model.number="maxPrice" min="0" max="10000">
+          <input type="range" class="form-range" v-model.number="maxPrice" min="0" max="1000000">
 
         </div>
 
@@ -132,7 +145,7 @@ export default {
               <div class="p-3">
 
                 <h5 class="fw-bold text-success">
-                  {{ v.make }} {{ v.model }}
+                  {{ v.brand }} {{ v.model }}
                 </h5>
 
                 <p class="text-muted mb-2">
@@ -142,7 +155,8 @@ export default {
                 <div class="d-flex gap-2 flex-wrap mb-3">
 
                   <span class="badge bg-light text-success">
-                    <i class="bi bi-fuel-pump me-1"></i>{{ v.fuel_type }}
+                    <i class="bi bi-fuel-pump me-1"></i>
+                    {{ fuelTranslations[v.fuel_type] || v.fuel_type }}
                   </span>
 
                   <span class="badge bg-light text-success">
@@ -158,7 +172,7 @@ export default {
 
                 <div class="d-flex justify-content-between align-items-center mb-3">
                   <span class="price text-success fw-bold">
-                    ${{ v.daily_rate }}/nap
+                    {{ formatPrice(v.daily_rate) }} / nap
                   </span>
                 </div>
 

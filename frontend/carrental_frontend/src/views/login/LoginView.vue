@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import {useAuth} from "../../auth/useAuth.js";
+import axios from 'axios'
 export default {
   name: 'LoginView',
   components: {
@@ -18,43 +19,34 @@ export default {
     const successMessage = ref(null)
 
     const handleLogin = async () => {
+      if (!email.value || !password.value) {
+        error.value = 'Kérjük, töltsd ki az összes mezőt!'
+        return
+      }
+
       loading.value = true
       error.value = null
       successMessage.value = null
 
       try {
-        if (
-            (email.value === 'admin@carrentalpro.com' ||
-                email.value === 'agent@carrentalpro.com' ||
-                email.value === 'user@example.com') &&
-            password.value === 'password'
-        ) {
-          const role = email.value.includes('admin')
-              ? 'admin'
-              : email.value.includes('agent')
-                  ? 'rentalagent'
-                  : 'user'
+        const res = await axios.post('http://localhost:8000/api/login', {
+          email: email.value,
+          password: password.value
+        })
+        const userData = res.data.user
+        login(userData.email, null, userData.role)
 
-          login(email.value, password.value, role)
+        successMessage.value = 'Sikeres bejelentkezés!'
 
-          successMessage.value = 'Sikeres bejelentkezés!'
+        setTimeout(() => {
+          router.push('/')
+        }, 800)
 
-          setTimeout(() => {
-            router.push('/')
-          }, 800)
-        } else {
-          error.value = 'Hibás e-mail vagy jelszó.'
-        }
       } catch (err) {
-        error.value = 'Hiba történt bejelentkezés közben.'
+        error.value = err.response?.data?.message || 'Hibás e-mail vagy jelszó.'
+      } finally {
+        loading.value = false
       }
-
-      loading.value = false
-    }
-
-    const setDemoCredentials = (emailValue) => {
-      email.value = emailValue
-      password.value = 'password'
     }
 
     return {
@@ -64,7 +56,6 @@ export default {
       error,
       successMessage,
       handleLogin,
-      setDemoCredentials
     }
   }
 }
@@ -112,27 +103,6 @@ export default {
               <span v-if="!loading">Bejelentkezés</span>
               <span v-else>Betöltés...</span>
             </button>
-
-            <div class="mt-4 text-center">
-              <small class="text-muted">Demo fiókok:</small>
-
-              <div class="d-flex gap-2 justify-content-center mt-2">
-                <button class="btn btn-outline-success btn-sm"
-                        @click="setDemoCredentials('admin@carrentalpro.com')">
-                  Admin
-                </button>
-
-                <button class="btn btn-outline-success btn-sm"
-                        @click="setDemoCredentials('agent@carrentalpro.com')">
-                  Ügynök
-                </button>
-
-                <button class="btn btn-outline-success btn-sm"
-                        @click="setDemoCredentials('user@example.com')">
-                  Felhasználó
-                </button>
-              </div>
-            </div>
 
             <div class="mt-3 text-center">
               <RouterLink to="/auth/register" class="text-success">
