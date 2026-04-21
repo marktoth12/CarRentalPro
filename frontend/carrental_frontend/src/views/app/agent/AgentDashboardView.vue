@@ -1,3 +1,69 @@
+<script>
+import { onMounted, ref } from 'vue'
+import axios from 'axios'
+
+export default {
+  name: 'AgentDashboardView',
+  setup() {
+    const stats = ref({ totalVehicles: 0, activeRentals: 0, totalRevenue: 0, pendingRequests: 0 })
+    const vehicles = ref([])
+    const rentals = ref([])
+    const pendingRequests = ref([])
+    const loading = ref(true)
+    const activeTab = ref('overview')
+
+    const fetchData = async () => {
+      loading.value = true
+      try {
+        const token = localStorage.getItem('token')
+
+        if (!token) {
+          console.error('Nincs token! Nem vagy bejelentkezve.')
+          loading.value = false
+          return
+        }
+
+        const response = await axios.get('http://127.0.0.1:8000/api/vehicles', {
+          params: { dashboard: 1 },
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json'
+          }
+        })
+
+        const rawData = Array.isArray(response.data) ? response.data : []
+
+        vehicles.value = rawData.map(v => ({
+          ...v,
+          id: v.vehicle_id,
+          is_available: Boolean(Number(v.is_available)),
+          is_approved: Boolean(Number(v.is_approved))
+        }))
+
+        stats.value.totalVehicles = vehicles.value.length
+        stats.value.activeRentals = vehicles.value.filter(v => !v.is_available).length
+        stats.value.totalRevenue = vehicles.value.reduce(
+            (sum, v) => sum + (Number(v.daily_rate || 0) * 15), 0
+        )
+        stats.value.pendingRequests = vehicles.value.filter(v => !v.is_approved).length
+
+      } catch (err) {
+        console.error('Dashboard fetch hiba:', err.response?.status, err.response?.data)
+        if (err.response?.status === 401) {
+          console.error('Hitelesítési hiba – a token valószínűleg nem érvényes')
+        }
+      } finally {
+        loading.value = false
+      }
+    }
+
+    onMounted(fetchData)
+
+    return { stats, vehicles, rentals, pendingRequests, loading, activeTab }
+  }
+}
+</script>
+
 <template>
   <div class="agent-dashboard-wrapper py-5">
     <div class="container">
@@ -161,61 +227,6 @@
     </div>
   </div>
 </template>
-
-<script>
-import { onMounted, ref } from 'vue'
-import axios from 'axios'
-
-export default {
-  name: 'AgentDashboardView',
-  setup() {
-    const stats = ref({ totalVehicles: 0, activeRentals: 0, totalRevenue: 0, pendingRequests: 0 })
-    const vehicles = ref([])
-    const rentals = ref([])
-    const pendingRequests = ref([])
-    const loading = ref(true)
-    const activeTab = ref('overview')
-
-    const fetchData = async () => {
-      loading.value = true
-      try {
-        const token = localStorage.getItem('token')
-        const response = await axios.get('http://127.0.0.1:8000/api/vehicles?dashboard=1', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json'
-          }
-        })
-
-        const rawData = Array.isArray(response.data) ? response.data : []
-
-        // JAVÍTÁS: Adatmezők kényszerítése az adatbázisodhoz
-        vehicles.value = rawData.map(v => ({
-          ...v,
-          // Biztosítjuk, hogy legyen id mező a Vue-nak a vehicle_id-ból
-          id: v.vehicle_id,
-          is_available: Number(v.is_available) === 1,
-          is_approved: Number(v.is_approved) === 1
-        }))
-
-        stats.value.totalVehicles = vehicles.value.length
-        stats.value.activeRentals = vehicles.value.filter(v => !v.is_available).length
-        stats.value.totalRevenue = vehicles.value.reduce((sum, v) => sum + (Number(v.daily_rate || 0) * 15), 0)
-        stats.value.pendingRequests = vehicles.value.filter(v => !v.is_approved).length
-
-      } catch (err) {
-        console.error("Hiba az adatok betöltésekor.")
-      } finally {
-        loading.value = false
-      }
-    }
-
-    onMounted(fetchData)
-
-    return { stats, vehicles, rentals, pendingRequests, loading, activeTab }
-  }
-}
-</script>
 
 <style scoped>
 .agent-dashboard-wrapper { background-color: #f8f9fa; min-height: 100vh; }

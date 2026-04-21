@@ -1,13 +1,12 @@
 <script>
 import { ref } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
-import {useAuth} from "../../auth/useAuth.js";
+import { useAuth } from "../../auth/useAuth.js"
 import axios from 'axios'
+
 export default {
   name: 'LoginView',
-  components: {
-    RouterLink
-  },
+  components: { RouterLink },
   setup() {
     const router = useRouter()
     const { login } = useAuth()
@@ -29,17 +28,23 @@ export default {
       successMessage.value = null
 
       try {
-        const res = await axios.post('http://localhost:8000/api/login', {
+        const res = await axios.post('http://127.0.0.1:8000/api/login', {
           email: email.value,
           password: password.value
         })
-        const userData = res.data.user
-        login(userData.email, null, userData.role)
+
+        // Fontos: a valódi Sanctum token mentése
+        if (res.data.token) {
+          localStorage.setItem('token', res.data.token)
+        }
+
+        const userData = res.data.user || {}
+        login(userData.email || '', null, userData.role || 'user')
 
         successMessage.value = 'Sikeres bejelentkezés!'
 
         setTimeout(() => {
-          router.push('/')
+          router.push('/agent')
         }, 800)
 
       } catch (err) {
@@ -63,12 +68,9 @@ export default {
 
 <template>
   <div class="container py-5">
-
     <div class="row justify-content-center">
       <div class="col-md-5">
-
         <div class="card login-card">
-
           <div class="card-body">
 
             <div class="text-center mb-4">
@@ -77,13 +79,8 @@ export default {
               <p class="text-muted mb-0">CarRental Pro</p>
             </div>
 
-            <div v-if="error" class="alert alert-danger">
-              {{ error }}
-            </div>
-
-            <div v-if="successMessage" class="alert alert-success">
-              {{ successMessage }}
-            </div>
+            <div v-if="error" class="alert alert-danger">{{ error }}</div>
+            <div v-if="successMessage" class="alert alert-success">{{ successMessage }}</div>
 
             <div class="mb-3">
               <label class="form-label">E-mail</label>
@@ -111,12 +108,9 @@ export default {
             </div>
 
           </div>
-
         </div>
-
       </div>
     </div>
-
   </div>
 </template>
 
