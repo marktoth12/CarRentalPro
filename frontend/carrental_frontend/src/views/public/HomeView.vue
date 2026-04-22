@@ -122,12 +122,12 @@ export default {
 
             <img
                 :src="vehicle.image || 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=800'"
-                :alt="vehicle.make + ' ' + vehicle.model"
+                :alt="vehicle.brand + ' ' + vehicle.model"
             >
 
             <div class="p-3">
               <h6 class="text-success">
-                {{ vehicle.make }} {{ vehicle.model }}
+                {{ vehicle.brand }} {{ vehicle.model }}
               </h6>
 
               <p class="text-muted small">

@@ -72,7 +72,7 @@ export default {
         <div class="row align-items-center">
           <div class="col-md-6">
             <h2 class="fw-bold text-success mb-0">
-              <i class="bi bi-person-badge me-2"></i>Ügynök Kezelőpult
+              <i class="bi bi-person-badge me-2"></i>Bérbeadó Kezelőpult
             </h2>
           </div>
           <div class="col-md-6 text-md-end">

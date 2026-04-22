@@ -33,18 +33,22 @@ export default {
           password: password.value
         })
 
-        // Fontos: a valódi Sanctum token mentése
-        if (res.data.token) {
-          localStorage.setItem('token', res.data.token)
-        }
-
+        const token = res.data.token
         const userData = res.data.user || {}
-        login(userData.email || '', null, userData.role || 'user')
+        const userRole = userData.role || 'user'
+
+        login(userData.email, userRole, token)
 
         successMessage.value = 'Sikeres bejelentkezés!'
 
         setTimeout(() => {
-          router.push('/agent')
+          if (userRole === 'admin') {
+            router.push('/admin')
+          } else if (userRole === 'rentalagent') {
+            router.push('/agent')
+          } else {
+            router.push('/')
+          }
         }, 800)
 
       } catch (err) {
@@ -71,7 +75,7 @@ export default {
     <div class="row justify-content-center">
       <div class="col-md-5">
         <div class="card login-card">
-          <div class="card-body">
+          <div class="card-body p-4">
 
             <div class="text-center mb-4">
               <i class="bi bi-car-front-fill text-success fs-1"></i>
@@ -79,31 +83,31 @@ export default {
               <p class="text-muted mb-0">CarRental Pro</p>
             </div>
 
-            <div v-if="error" class="alert alert-danger">{{ error }}</div>
-            <div v-if="successMessage" class="alert alert-success">{{ successMessage }}</div>
+            <div v-if="error" class="alert alert-danger border-0 small">{{ error }}</div>
+            <div v-if="successMessage" class="alert alert-success border-0 small">{{ successMessage }}</div>
 
             <div class="mb-3">
-              <label class="form-label">E-mail</label>
-              <input type="email" class="form-control" v-model="email">
+              <label class="form-label small fw-bold">E-mail</label>
+              <input type="email" class="form-control rounded-3" v-model="email" placeholder="pelda@email.hu">
             </div>
 
             <div class="mb-3">
-              <label class="form-label">Jelszó</label>
-              <input type="password" class="form-control" v-model="password">
+              <label class="form-label small fw-bold">Jelszó</label>
+              <input type="password" class="form-control rounded-3" v-model="password" placeholder="••••••••">
             </div>
 
             <button
-                class="btn btn-success w-100"
+                class="btn btn-success w-100 rounded-pill py-2 fw-bold"
                 :disabled="loading"
                 @click="handleLogin"
             >
               <span v-if="!loading">Bejelentkezés</span>
-              <span v-else>Betöltés...</span>
+              <span v-else class="spinner-border spinner-border-sm"></span>
             </button>
 
-            <div class="mt-3 text-center">
-              <RouterLink to="/auth/register" class="text-success">
-                Nincs fiókod? Regisztráció
+            <div class="mt-4 text-center">
+              <RouterLink to="/auth/register" class="text-success text-decoration-none small">
+                Nincs fiókod? <strong>Regisztráció</strong>
               </RouterLink>
             </div>
 
@@ -118,6 +122,10 @@ export default {
 .login-card {
   border-radius: 20px;
   border: none;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+}
+.form-control:focus {
+  border-color: #198754;
+  box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.1);
 }
 </style>

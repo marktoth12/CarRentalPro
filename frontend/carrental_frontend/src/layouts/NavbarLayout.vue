@@ -1,7 +1,7 @@
 <script>
 import { RouterLink, useRouter } from 'vue-router'
 import { useAuth } from "../auth/useAuth.js"
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 
 export default {
   name: "NavbarLayout",
@@ -9,91 +9,114 @@ export default {
   setup() {
     const router = useRouter()
     const { isAuthenticated, user, logout, checkAuth } = useAuth()
+    const isDropdownOpen = ref(false)
 
     onMounted(() => {
       checkAuth()
     })
 
+    const toggleDropdown = () => {
+      isDropdownOpen.value = !isDropdownOpen.value
+    }
+
+    const closeDropdown = () => {
+      isDropdownOpen.value = false
+    }
+
     const handleLogout = () => {
       logout()
+      closeDropdown()
       router.push('/')
     }
 
     return {
       isAuthenticated,
       user,
-      handleLogout
+      handleLogout,
+      isDropdownOpen,
+      toggleDropdown,
+      closeDropdown
     }
   }
 }
 </script>
 
 <template>
-  <nav class="navbar navbar-expand-lg navbar-custom navbar-dark">
-    <div class="container-fluid">
-      <RouterLink class="navbar-brand d-flex align-items-center" to="/">
+  <nav class="navbar navbar-expand-lg navbar-custom">
+    <div class="container">
+      <RouterLink class="navbar-brand d-flex align-items-center" to="/" @click="closeDropdown">
         <i class="bi bi-car-front-fill me-2"></i>
         <span class="brand-text">CarRental Pro</span>
       </RouterLink>
 
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+      <button
+          class="navbar-toggler"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#navbarNav"
+      >
         <span class="navbar-toggler-icon"></span>
       </button>
 
       <div class="collapse navbar-collapse" id="navbarNav">
         <ul class="navbar-nav ms-auto align-items-lg-center">
           <li class="nav-item">
-            <RouterLink class="nav-link" to="/">Kezdőlap</RouterLink>
+            <RouterLink class="nav-link" to="/" @click="closeDropdown">Kezdőlap</RouterLink>
           </li>
           <li class="nav-item">
-            <RouterLink class="nav-link" to="/vehicles">Járművek</RouterLink>
+            <RouterLink class="nav-link" to="/vehicles" @click="closeDropdown">Járművek</RouterLink>
           </li>
           <li class="nav-item">
-            <RouterLink class="nav-link" to="/about">Rólunk</RouterLink>
+            <RouterLink class="nav-link" to="/about" @click="closeDropdown">Rólunk</RouterLink>
           </li>
           <li class="nav-item">
-            <RouterLink class="nav-link" to="/contact">Kapcsolat</RouterLink>
+            <RouterLink class="nav-link" to="/contact" @click="closeDropdown">Kapcsolat</RouterLink>
           </li>
 
-          <!-- Nincs bejelentkezve -->
           <li class="nav-item ms-lg-2" v-if="!isAuthenticated">
-            <RouterLink class="btn btn-sm btn-success rounded-pill px-3" to="/auth/login">
+            <RouterLink class="btn btn-success rounded-pill px-4" to="/auth/login" @click="closeDropdown">
               Bejelentkezés
             </RouterLink>
           </li>
 
-          <!-- Be van jelentkezve - Dropdown -->
           <li class="nav-item dropdown ms-lg-2" v-else>
-            <a class="nav-link dropdown-toggle user-pill" href="#" role="button" data-bs-toggle="dropdown">
+            <a
+                class="nav-link dropdown-toggle user-pill mt-2 mt-lg-0"
+                href="#"
+                @click.prevent="toggleDropdown"
+                :class="{ 'show': isDropdownOpen }"
+            >
               <i class="bi bi-person-circle me-1"></i>
               {{ user?.email?.split('@')[0] || 'Fiók' }}
             </a>
-            <ul class="dropdown-menu dropdown-menu-end shadow border-0 rounded-4 p-2">
+            <ul
+                class="dropdown-menu dropdown-menu-end shadow border-0 rounded-4 p-2"
+                :class="{ 'show': isDropdownOpen }"
+                :style="{ display: isDropdownOpen ? 'block' : 'none' }"
+            >
               <li class="dropdown-header text-success fw-bold">
                 {{ user?.email || 'Felhasználó' }}
               </li>
               <li><hr class="dropdown-divider"></li>
-
               <li v-if="user?.role === 'rentalagent'">
-                <RouterLink class="dropdown-item" to="/agent">
-                  <i class="bi bi-car-front me-2"></i>Ügynök felület
+                <RouterLink class="dropdown-item" to="/agent" @click="closeDropdown">
+                  Bérbeadó felület
                 </RouterLink>
               </li>
               <li v-if="user?.role === 'admin'">
-                <RouterLink class="dropdown-item" to="/admin">
-                  <i class="bi bi-gear me-2"></i>Admin dashboard
+                <RouterLink class="dropdown-item" to="/admin" @click="closeDropdown">
+                  Admin felület
                 </RouterLink>
               </li>
               <li v-if="user?.role === 'user'">
-                <RouterLink class="dropdown-item" to="/my-rentals">
-                  <i class="bi bi-clock-history me-2"></i>Saját bérlések
+                <RouterLink class="dropdown-item" to="/my-rentals" @click="closeDropdown">
+                  Saját bérlések
                 </RouterLink>
               </li>
-
               <li><hr class="dropdown-divider"></li>
               <li>
                 <button class="dropdown-item text-danger" @click="handleLogout">
-                  <i class="bi bi-box-arrow-right me-2"></i>Kijelentkezés
+                  Kijelentkezés
                 </button>
               </li>
             </ul>
@@ -111,45 +134,45 @@ export default {
   border-bottom: 2px solid #f0fdf4;
   position: sticky;
   top: 0;
-  z-index: 999;
+  z-index: 1050;
+  padding: 0.7rem 0;
 }
 .navbar-brand {
-  font-weight: 700;
+  font-weight: 800;
   color: #198754 !important;
-  font-size: 1.2rem;
-}
-.brand-text {
-  color: #198754;
 }
 .nav-link {
-  color: #2f2f2f !important;
-  font-weight: 500;
-  border-radius: 10px;
-  padding: 0.4rem 0.8rem !important;
-  transition: 0.2s;
+  color: #444 !important;
+  font-weight: 600;
+  padding: 0.5rem 1rem !important;
+  transition: 0.3s;
 }
 .nav-link:hover {
-  background: #f0fdf4;
   color: #198754 !important;
 }
 .user-pill {
   background: #f0fdf4;
   border: 1px solid #d1fae5;
   border-radius: 999px;
-  padding: 0.4rem 1rem !important;
   color: #198754 !important;
 }
-.dropdown-item {
-  border-radius: 10px;
-  padding: 0.6rem 1rem;
-  transition: 0.2s;
+.dropdown-menu.show {
+  animation: fadeIn 0.2s ease-out;
 }
-.dropdown-item:hover {
-  background: #f0fdf4;
-  color: #198754;
-  transform: translateX(3px);
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
-.dropdown-item.text-danger:hover {
-  background: rgba(220, 53, 69, 0.08);
+@media (max-width: 991.98px) {
+  .navbar-collapse {
+    background: white;
+    padding: 1rem;
+    border-radius: 1rem;
+    margin-top: 1rem;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  }
+  .user-pill {
+    border-radius: 10px;
+  }
 }
 </style>
