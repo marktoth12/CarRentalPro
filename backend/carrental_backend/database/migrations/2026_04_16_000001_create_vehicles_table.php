@@ -9,9 +9,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('vehicles', function (Blueprint $table) {
-            $table->id('vehicle_id');
-            $table->foreignId('rentalagent_id')->constrained('users', 'user_id');
-            $table->string('make', 50);
+            $table->id('vehicle_id'); // PONTOS EGYEZÉS: vehicle_id
+            $table->unsignedBigInteger('rentalagent_id');
+            $table->string('brand', 50);
             $table->string('model', 50);
             $table->year('year');
             $table->string('license_plate', 10)->unique();
@@ -22,10 +22,14 @@ return new class extends Migration
             $table->integer('number_of_seats');
             $table->string('location_pickup', 100);
             $table->string('location_return', 100);
-            $table->boolean('is_available')->default(true);
-            $table->timestamp('upload_date')->useCurrent();
-            $table->boolean('is_approved')->default(false);
+            $table->boolean('is_available')->default(1);
+            $table->boolean('is_approved')->default(0);
             $table->timestamps();
+
+            // IDEGEN KULCS BEÁLLÍTÁSA A DUMP ALAPJÁN
+            $table->foreign('rentalagent_id')
+                ->references('user_id') // A Users tábla user_id mezőjére
+                ->on('users');
         });
     }
 
@@ -34,4 +38,3 @@ return new class extends Migration
         Schema::dropIfExists('vehicles');
     }
 };
-

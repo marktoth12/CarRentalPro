@@ -12,9 +12,12 @@ class Vehicle extends Model
     protected $table = 'vehicles';
     protected $primaryKey = 'vehicle_id';
 
+    // Ha az adatbázisodban NINCS created_at és updated_at oszlop, ez KELL:
+    public $timestamps = true;
+
     protected $fillable = [
         'rentalagent_id',
-        'make',
+        'brand',
         'model',
         'year',
         'license_plate',
@@ -30,9 +33,9 @@ class Vehicle extends Model
     ];
 
     protected $casts = [
-        'upload_date' => 'datetime',
         'is_available' => 'boolean',
         'is_approved' => 'boolean',
+        // Kivettem az upload_date-et, mert ha az adatbázisban timestamp, a Laravel automatikusan kezeli
     ];
 
     public function rentalAgent()
@@ -50,4 +53,3 @@ class Vehicle extends Model
         return $this->hasMany(Rental::class, 'vehicle_id', 'vehicle_id');
     }
 }
-

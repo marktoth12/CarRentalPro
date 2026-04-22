@@ -4,71 +4,88 @@ namespace App\Http\Controllers;
 
 use App\Models\Vehicle;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class VehicleController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return Vehicle::with('images', 'rentalAgent')->paginate(15);
+        if ($request->query('dashboard')) {
+            $user = Auth::guard('sanctum')->user();
+
+            if (!$user) {
+                return response()->json(['error' => 'Unauthorized'], 401);
+            }
+
+            $vehicles = Vehicle::where('rentalagent_id', $user->user_id)
+                ->with('images')
+                ->get();
+
+            return response()->json($vehicles);
+        }
+
+        return response()->json(Vehicle::where('is_approved', 1)->get());
     }
 
     public function show($id)
     {
-        return Vehicle::with('images', 'rentalAgent', 'rentals')->findOrFail($id);
+        return response()->json(Vehicle::where('vehicle_id', $id)->firstOrFail());
     }
 
     public function store(Request $request)
     {
+        $user = Auth::guard('sanctum')->user();
+
+        if (!$user || $user->role !== 'rentalagent') {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
+
         $validated = $request->validate([
-            'make' => 'required|string|max:50',
+            'brand' => 'required|string|max:50',
             'model' => 'required|string|max:50',
-            'year' => 'required|digits:4',
-            'license_plate' => 'required|string|unique:vehicles|max:10',
-            'daily_rate' => 'required|numeric|min:0',
-            'description' => 'nullable|string',
+            'year' => 'required|integer',
+            'license_plate' => 'required|string|unique:vehicles,license_plate',
+            'daily_rate' => 'required|numeric',
             'fuel_type' => 'required|in:petrol,diesel,electric,hybrid',
             'transmission_type' => 'required|in:manual,automatic',
-            'number_of_seats' => 'required|integer|min:1',
+            'number_of_seats' => 'required|integer',
             'location_pickup' => 'required|string|max:100',
             'location_return' => 'required|string|max:100',
+            'description' => 'nullable|string'
         ]);
 
-        $validated['rentalagent_id'] = auth()->id();
-        $vehicle = Vehicle::create($validated);
+        $vehicle = Vehicle::create(array_merge($validated, [
+            'rentalagent_id' => $user->user_id,
+            'is_approved' => 0,
+            'is_available' => 1
+        ]));
 
         return response()->json($vehicle, 201);
     }
 
     public function update(Request $request, $id)
     {
-        $vehicle = Vehicle::findOrFail($id);
-        $this->authorize('update', $vehicle);
+        $user = Auth::guard('sanctum')->user();
+        $vehicle = Vehicle::where('vehicle_id', $id)->firstOrFail();
 
-        $validated = $request->validate([
-            'make' => 'string|max:50',
-            'model' => 'string|max:50',
-            'year' => 'digits:4',
-            'daily_rate' => 'numeric|min:0',
-            'description' => 'nullable|string',
-            'fuel_type' => 'in:petrol,diesel,electric,hybrid',
-            'transmission_type' => 'in:manual,automatic',
-            'number_of_seats' => 'integer|min:1',
-            'location_pickup' => 'string|max:100',
-            'location_return' => 'string|max:100',
-            'is_available' => 'boolean',
-        ]);
+        if (!$user || ($user->user_id !== $vehicle->rentalagent_id && $user->role !== 'admin')) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
 
-        $vehicle->update($validated);
-        return $vehicle;
+        $vehicle->update($request->all());
+        return response()->json($vehicle);
     }
 
     public function destroy($id)
     {
-        $vehicle = Vehicle::findOrFail($id);
-        $this->authorize('delete', $vehicle);
-        $vehicle->delete();
+        $user = Auth::guard('sanctum')->user();
+        $vehicle = Vehicle::where('vehicle_id', $id)->firstOrFail();
 
-        return response()->noContent();
+        if (!$user || ($user->user_id !== $vehicle->rentalagent_id && $user->role !== 'admin')) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
+
+        $vehicle->delete();
+        return response()->json(['message' => 'Deleted']);
     }
 }
-

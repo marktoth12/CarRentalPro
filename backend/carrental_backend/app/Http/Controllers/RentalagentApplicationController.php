@@ -4,34 +4,39 @@ namespace App\Http\Controllers;
 
 use App\Models\RentalagentApplication;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class RentalagentApplicationController extends Controller
 {
     public function index()
     {
-        $user = auth()->user();
+        $user = Auth::guard('sanctum')->user();
 
         if ($user->role === 'admin') {
-            return RentalagentApplication::with('user', 'admin')->paginate(15);
+            // .get() használata paginate helyett, ha a Vue egyszerű tömböt vár
+            return response()->json(RentalagentApplication::with('user', 'admin')->get());
         }
 
-        return RentalagentApplication::where('user_id', $user->user_id)->with('user', 'admin')->paginate(15);
+        return response()->json(
+            RentalagentApplication::where('user_id', $user->user_id)
+                ->with('user', 'admin')
+                ->get()
+        );
     }
 
     public function show($id)
     {
         $application = RentalagentApplication::with('user', 'admin')->findOrFail($id);
-        return $application;
+        return response()->json($application);
     }
 
     public function store(Request $request)
     {
-        $user = auth()->user();
+        $user = Auth::guard('sanctum')->user();
 
-        // Check if user already has an application
         $existing = RentalagentApplication::where('user_id', $user->user_id)->first();
         if ($existing) {
-            return response()->json(['message' => 'You already have an application'], 422);
+            return response()->json(['message' => 'Már van folyamatban lévő jelentkezésed!'], 422);
         }
 
         $application = RentalagentApplication::create([
@@ -44,36 +49,39 @@ class RentalagentApplicationController extends Controller
 
     public function approve(Request $request, $id)
     {
-        $this->authorize('create', RentalagentApplication::class);
+        $admin = Auth::guard('sanctum')->user();
+        if ($admin->role !== 'admin') {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
 
         $application = RentalagentApplication::findOrFail($id);
-
         $application->update([
             'status' => 'approved',
-            'admin_id' => auth()->id(),
+            'admin_id' => $admin->user_id,
             'decision_date' => now(),
         ]);
 
-        // Update user role
         $user = $application->user;
-        $user->update(['role' => 'rentalagent']);
+        $user->role = 'rentalagent';
+        $user->save();
 
-        return $application;
+        return response()->json($application);
     }
 
     public function reject(Request $request, $id)
     {
-        $this->authorize('create', RentalagentApplication::class);
+        $admin = Auth::guard('sanctum')->user();
+        if ($admin->role !== 'admin') {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
 
         $application = RentalagentApplication::findOrFail($id);
-
         $application->update([
             'status' => 'rejected',
-            'admin_id' => auth()->id(),
+            'admin_id' => $admin->user_id,
             'decision_date' => now(),
         ]);
 
-        return $application;
+        return response()->json($application);
     }
 }
-
