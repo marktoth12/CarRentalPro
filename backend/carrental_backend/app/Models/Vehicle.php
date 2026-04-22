@@ -50,6 +50,6 @@ class Vehicle extends Model
 
     public function rentals()
     {
-        return $this->hasMany(Rental::class, 'vehicle_id', 'vehicle_id');
+        return $this->hasMany(\App\Models\Rental::class, 'vehicle_id', 'vehicle_id');
     }
 }

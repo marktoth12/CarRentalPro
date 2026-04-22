@@ -7,12 +7,20 @@ use Illuminate\Http\Request;
 
 class RentalController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $user = auth()->user();
 
         if ($user->role === 'admin') {
             return Rental::with('user', 'vehicle')->paginate(15);
+        }
+
+        if ($user->role === 'rentalagent') {
+            return Rental::with('user', 'vehicle')
+                ->whereHas('vehicle', function ($q) use ($user) {
+                    $q->where('rentalagent_id', $user->user_id);
+                })
+                ->get();
         }
 
         return Rental::where('user_id', $user->user_id)

@@ -85,6 +85,15 @@ class VehicleController extends Controller
             return response()->json(['error' => 'Forbidden'], 403);
         }
 
+        $activeRentals = \App\Models\Rental::where('vehicle_id', $id)
+            ->whereIn('rental_status', ['pending_approval', 'approved', 'in_progress'])
+            ->exists();
+
+        if ($activeRentals) {
+            return response()->json(['error' => 'A járműnek aktív bérlése van, nem törölhető.'], 422);
+        }
+
+        \App\Models\Rental::where('vehicle_id', $id)->delete();
         $vehicle->delete();
         return response()->json(['message' => 'Deleted']);
     }
