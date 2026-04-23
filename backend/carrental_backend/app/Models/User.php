@@ -44,8 +44,8 @@ class User extends Authenticatable
         return [
             'registration_date' => 'datetime',
             'date_of_birth' => 'date',
-            'password_hash' => 'hashed',
             'is_approved' => 'boolean',
+            // password_hash NEM szerepel itt – különben duplán hash-elődik
         ];
     }
 

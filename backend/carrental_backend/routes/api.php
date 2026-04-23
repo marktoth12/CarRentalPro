@@ -10,8 +10,11 @@ use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\VehicleImageController;
 use App\Http\Controllers\RentalPhotoController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\ContactMessageController;
+use App\Http\Controllers\VehicleMessageController;
 
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/contact', [ContactMessageController::class, 'store']);
 Route::post('/register', [AuthController::class, 'register']);
 Route::get('/vehicles', [VehicleController::class, 'index']);
 Route::get('/vehicles/{id}', [VehicleController::class, 'show']);
@@ -34,4 +37,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('rentalagent-applications/{id}/approve', [RentalagentApplicationController::class, 'approve']);
     Route::post('rentalagent-applications/{id}/reject', [RentalagentApplicationController::class, 'reject']);
     Route::apiResource('users', UserController::class);
+    Route::get('/contact-messages', [ContactMessageController::class, 'index']);
+    Route::patch('/contact-messages/{id}/read', [ContactMessageController::class, 'markRead']);
+    Route::delete('/contact-messages/{id}', [ContactMessageController::class, 'destroy']);
+    Route::post('/vehicle-messages', [VehicleMessageController::class, 'store']);
+    Route::get('/vehicle-messages', [VehicleMessageController::class, 'index']);
+    Route::patch('/vehicle-messages/{id}/read', [VehicleMessageController::class, 'markRead']);
+    Route::delete('/vehicle-messages/{id}', [VehicleMessageController::class, 'destroy']);
 });

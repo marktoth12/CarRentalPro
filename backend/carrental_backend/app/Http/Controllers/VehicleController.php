@@ -37,7 +37,7 @@ class VehicleController extends Controller
     public function show($id)
     {
         return response()->json(
-            Vehicle::where('vehicle_id', $id)->with('images')->firstOrFail()
+            Vehicle::where('vehicle_id', $id)->with('images', 'rentalAgent')->firstOrFail()
         );
     }
 

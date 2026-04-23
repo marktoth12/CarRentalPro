@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Gép: localhost
--- Létrehozás ideje: 2026. Ápr 23. 12:06
+-- Létrehozás ideje: 2026. Ápr 23. 13:40
 -- Kiszolgáló verziója: 10.4.28-MariaDB
 -- PHP verzió: 8.2.4
 
@@ -48,52 +48,18 @@ CREATE TABLE `cache_locks` (
 -- --------------------------------------------------------
 
 --
--- Tábla szerkezet ehhez a táblához `failed_jobs`
+-- Tábla szerkezet ehhez a táblához `contact_messages`
 --
 
-CREATE TABLE `failed_jobs` (
+CREATE TABLE `contact_messages` (
   `id` bigint(20) UNSIGNED NOT NULL,
-  `uuid` varchar(255) NOT NULL,
-  `connection` text NOT NULL,
-  `queue` text NOT NULL,
-  `payload` longtext NOT NULL,
-  `exception` longtext NOT NULL,
-  `failed_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
--- Tábla szerkezet ehhez a táblához `jobs`
---
-
-CREATE TABLE `jobs` (
-  `id` bigint(20) UNSIGNED NOT NULL,
-  `queue` varchar(255) NOT NULL,
-  `payload` longtext NOT NULL,
-  `attempts` tinyint(3) UNSIGNED NOT NULL,
-  `reserved_at` int(10) UNSIGNED DEFAULT NULL,
-  `available_at` int(10) UNSIGNED NOT NULL,
-  `created_at` int(10) UNSIGNED NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
--- Tábla szerkezet ehhez a táblához `job_batches`
---
-
-CREATE TABLE `job_batches` (
-  `id` varchar(255) NOT NULL,
-  `name` varchar(255) NOT NULL,
-  `total_jobs` int(11) NOT NULL,
-  `pending_jobs` int(11) NOT NULL,
-  `failed_jobs` int(11) NOT NULL,
-  `failed_job_ids` longtext NOT NULL,
-  `options` mediumtext DEFAULT NULL,
-  `cancelled_at` int(11) DEFAULT NULL,
-  `created_at` int(11) NOT NULL,
-  `finished_at` int(11) DEFAULT NULL
+  `first_name` varchar(255) NOT NULL,
+  `last_name` varchar(255) NOT NULL,
+  `email` varchar(255) NOT NULL,
+  `message` text NOT NULL,
+  `is_read` tinyint(1) NOT NULL DEFAULT 0,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -185,7 +151,20 @@ INSERT INTO `personal_access_tokens` (`id`, `tokenable_type`, `tokenable_id`, `n
 (35, 'App\\Models\\User', 1, 'auth-token', '7b775c9287030df3768abb355d836e282e2d1a598a7c87136bcd3bdb0cfbb967', '[\"*\"]', '2026-04-23 07:29:23', NULL, '2026-04-23 07:29:22', '2026-04-23 07:29:23'),
 (36, 'App\\Models\\User', 11, 'auth-token', '9b56f042e3fb77ac69307c13332a808d99c1acfe63a38c265022eb3b126d2c2e', '[\"*\"]', '2026-04-23 07:30:29', NULL, '2026-04-23 07:29:48', '2026-04-23 07:30:29'),
 (37, 'App\\Models\\User', 1, 'auth-token', 'd91fd0b9b269f708b9ca89645511fb990f2f890e08d9a45aed1c8aa9d329bec8', '[\"*\"]', '2026-04-23 07:32:22', NULL, '2026-04-23 07:31:33', '2026-04-23 07:32:22'),
-(38, 'App\\Models\\User', 11, 'auth-token', '4c76cc041153fd8773777ea42cd1853ee2fcac09be4a2e36c9ba36bc1d7cfdd8', '[\"*\"]', '2026-04-23 07:32:39', NULL, '2026-04-23 07:32:38', '2026-04-23 07:32:39');
+(38, 'App\\Models\\User', 11, 'auth-token', '4c76cc041153fd8773777ea42cd1853ee2fcac09be4a2e36c9ba36bc1d7cfdd8', '[\"*\"]', '2026-04-23 07:32:39', NULL, '2026-04-23 07:32:38', '2026-04-23 07:32:39'),
+(39, 'App\\Models\\User', 11, 'auth-token', '6b69cfcadabaee1459560c3f9303c8a4e2d65c64765733903bd33cd878f81aa3', '[\"*\"]', '2026-04-23 08:10:09', NULL, '2026-04-23 08:10:08', '2026-04-23 08:10:09'),
+(40, 'App\\Models\\User', 1, 'auth-token', '1d859b3ecfcc4bbf40372a767981a677de786ac0d10129f4413e96b98757a34d', '[\"*\"]', '2026-04-23 08:22:33', NULL, '2026-04-23 08:22:32', '2026-04-23 08:22:33'),
+(41, 'App\\Models\\User', 11, 'auth-token', 'ae1a578fe71a50e0a7ee998f93ab2fa80d294d625c48991a66a444b65c6c28ec', '[\"*\"]', '2026-04-23 08:40:55', NULL, '2026-04-23 08:40:43', '2026-04-23 08:40:55'),
+(42, 'App\\Models\\User', 1, 'auth-token', 'f0808a849e0377ad19f7fa82a898642911f1c3cb6e49772481bb04e315db9b96', '[\"*\"]', '2026-04-23 08:41:04', NULL, '2026-04-23 08:41:03', '2026-04-23 08:41:04'),
+(43, 'App\\Models\\User', 10, 'auth-token', '7366a1c50734b586e904568b123ccf42124e26951e0b74ca27c270e5d9268531', '[\"*\"]', NULL, NULL, '2026-04-23 08:41:44', '2026-04-23 08:41:44'),
+(44, 'App\\Models\\User', 11, 'auth-token', '55604b7a26081b7dc7457dc7d68a35364675209aed4048769a85e3d8869171c9', '[\"*\"]', '2026-04-23 08:44:26', NULL, '2026-04-23 08:41:59', '2026-04-23 08:44:26'),
+(45, 'App\\Models\\User', 7, 'auth-token', 'cd3f7474d9b1608a81a2bffa9122bb5d02c40576b4284d20e0937386d4a7cc24', '[\"*\"]', '2026-04-23 08:49:49', NULL, '2026-04-23 08:44:59', '2026-04-23 08:49:49'),
+(46, 'App\\Models\\User', 11, 'auth-token', 'ba0c7d47441d43fd79498dfbf8ec847206dab445f846b9cd76d0930a53003344', '[\"*\"]', '2026-04-23 09:08:21', NULL, '2026-04-23 09:07:03', '2026-04-23 09:08:21'),
+(47, 'App\\Models\\User', 1, 'auth-token', 'e420db814811a72a0d251817abee806e81fce2513743af00826d123d444ae68e', '[\"*\"]', '2026-04-23 09:28:43', NULL, '2026-04-23 09:08:32', '2026-04-23 09:28:43'),
+(48, 'App\\Models\\User', 1, 'auth-token', '0818f59fa6b4a8bde7fa64eb4f1b3be1b20c7fab00cac63b72db6953ca69a043', '[\"*\"]', '2026-04-23 09:09:53', NULL, '2026-04-23 09:09:26', '2026-04-23 09:09:53'),
+(49, 'App\\Models\\User', 11, 'auth-token', '89aaf4e6dcdd56843869d66eb2c3c42f0695fbeec09c49a4ace1cd8ce0ec8b7d', '[\"*\"]', '2026-04-23 09:29:22', NULL, '2026-04-23 09:29:08', '2026-04-23 09:29:22'),
+(50, 'App\\Models\\User', 2, 'auth-token', '5496d6869541bb2b7e459275d1ec6cc4d1207e0ece1332438a3a2790c3da43eb', '[\"*\"]', '2026-04-23 09:30:52', NULL, '2026-04-23 09:29:44', '2026-04-23 09:30:52'),
+(51, 'App\\Models\\User', 11, 'auth-token', '0287367919180c55cb3d2e362edb36c8da81c104b01f094416088e9376d64c75', '[\"*\"]', '2026-04-23 09:35:53', NULL, '2026-04-23 09:35:52', '2026-04-23 09:35:53');
 
 -- --------------------------------------------------------
 
@@ -239,43 +218,9 @@ CREATE TABLE `rentals` (
 --
 
 INSERT INTO `rentals` (`rental_id`, `user_id`, `vehicle_id`, `start_date`, `end_date`, `actual_return_date`, `pickup_location`, `return_location`, `total_price`, `rental_status`, `rental_request_date`, `rentalagent_decision_date`, `created_at`, `updated_at`) VALUES
-(3, 7, 6, '2026-04-24 09:00:00', '2026-04-25 09:00:00', NULL, 'Szeged', 'Szeged', 180000.00, 'approved', '2026-04-21 20:41:13', '2026-04-23 07:23:56', NULL, '2026-04-23 05:23:56'),
-(5, 1, 7, '2026-04-24 00:00:00', '2026-04-25 00:00:00', NULL, 'Szeged', 'Szeged', 22000.00, 'approved', '2026-04-23 09:04:38', '2026-04-23 09:05:32', '2026-04-23 07:04:38', '2026-04-23 07:05:32');
-
--- --------------------------------------------------------
-
---
--- Tábla szerkezet ehhez a táblához `rental_photos`
---
-
-CREATE TABLE `rental_photos` (
-  `rental_photo_id` bigint(20) UNSIGNED NOT NULL,
-  `rental_id` bigint(20) UNSIGNED NOT NULL,
-  `uploader_user_id` bigint(20) UNSIGNED NOT NULL,
-  `image_url` varchar(255) NOT NULL,
-  `photo_type` enum('pickup_user','pickup_rentalagent','return_user','return_rentalagent','damage_report') NOT NULL,
-  `upload_date` timestamp NOT NULL DEFAULT current_timestamp(),
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
--- Tábla szerkezet ehhez a táblához `reviews`
---
-
-CREATE TABLE `reviews` (
-  `review_id` bigint(20) UNSIGNED NOT NULL,
-  `rental_id` bigint(20) UNSIGNED NOT NULL,
-  `reviewer_user_id` bigint(20) UNSIGNED NOT NULL,
-  `reviewed_user_id` bigint(20) UNSIGNED NOT NULL,
-  `rating` int(11) NOT NULL,
-  `comment` text DEFAULT NULL,
-  `review_date` timestamp NOT NULL DEFAULT current_timestamp(),
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+(3, 7, 6, '2026-04-21 09:00:00', '2026-04-22 09:00:00', NULL, 'Szeged', 'Szeged', 180000.00, 'pending_approval', '2026-04-21 20:41:13', '2026-04-23 07:23:56', NULL, '2026-04-23 05:23:56'),
+(5, 1, 7, '2026-04-24 00:00:00', '2026-04-25 00:00:00', NULL, 'Szeged', 'Szeged', 22000.00, 'approved', '2026-04-23 09:04:38', '2026-04-23 09:05:32', '2026-04-23 07:04:38', '2026-04-23 07:05:32'),
+(6, 2, 3, '2026-04-23 00:00:00', '2026-04-30 00:00:00', NULL, 'Budaörs', 'Budaörs', 245000.00, 'approved', '2026-04-23 11:30:25', '2026-04-23 11:30:47', '2026-04-23 09:30:25', '2026-04-23 09:30:47');
 
 -- --------------------------------------------------------
 
@@ -327,7 +272,6 @@ INSERT INTO `users` (`user_id`, `username`, `email`, `password_hash`, `first_nam
 (6, 'kiss_kati', 'kati@mail.hu', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Katalin', 'Kiss', '1998-05-15', 'U002', 'user', 'active', 1, NULL, NULL),
 (7, 'toth_bela', 'bela@mail.hu', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Béla', 'Tóth', '1990-08-20', 'U003', 'user', 'active', 1, NULL, NULL),
 (8, 'nemeth_eva', 'eva@mail.hu', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Éva', 'Németh', '2001-12-01', 'U004', 'user', 'active', 1, NULL, NULL),
-(9, 'varga_adam', 'adam@mail.hu', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Ádám', 'Varga', '1994-04-30', 'U005', 'user', 'active', 1, NULL, NULL),
 (10, 'Teszt', 'teszt@gmail.com', '$2y$12$sDAp6DGAdXZENQuppXpwCeIi6idqhGNuZ0RjpV4madfYtKFSIdlJq', 'Teszt', 'Teszt', '2026-04-01', 'AB13232', 'user', 'active', 0, '2026-04-23 07:28:11', '2026-04-23 07:28:11'),
 (11, 'berbadoteszt', 'tesztagent@gmail.com', '$2y$12$AH6/sGVvo3.d3MC21bk/UuBWf/foacLZkizUmUoK9wm/q96g9BcPe', 'Tesyt', 'Berbado', '2026-05-08', 'AB214123', 'rentalagent', 'active', 0, '2026-04-23 07:29:12', '2026-04-23 07:32:22');
 
@@ -363,7 +307,7 @@ CREATE TABLE `vehicles` (
 
 INSERT INTO `vehicles` (`vehicle_id`, `rentalagent_id`, `brand`, `model`, `year`, `license_plate`, `daily_rate`, `description`, `fuel_type`, `transmission_type`, `number_of_seats`, `location_pickup`, `location_return`, `is_available`, `is_approved`, `created_at`, `updated_at`) VALUES
 (2, 2, 'Volkswagen', 'Golf', '2020', 'VW-100', 12000.00, NULL, 'petrol', 'manual', 5, 'Budapest', 'Budapest', 1, 1, NULL, '2026-04-23 06:02:53'),
-(3, 2, 'Tesla', 'Model 3', '2023', 'ELC-001', 35000.00, NULL, 'electric', 'automatic', 5, 'Budaörs', 'Budaörs', 1, 1, NULL, NULL),
+(3, 2, 'Tesla', 'Model 3', '2023', 'ELC-001', 35000.00, NULL, 'electric', 'automatic', 5, 'Budaörs', 'Budaörs', 0, 1, NULL, '2026-04-23 09:30:47'),
 (5, 3, 'Ford', 'Focus', '2019', 'FRD-888', 11000.00, NULL, 'petrol', 'manual', 5, 'Debrecen', 'Debrecen', 1, 1, NULL, NULL),
 (6, 4, 'BMW', 'X5', '2022', 'BMW-999', 45000.00, NULL, 'diesel', 'automatic', 5, 'Szeged', 'Szeged', 0, 1, NULL, '2026-04-23 05:23:56'),
 (7, 4, 'Audi', 'A4', '2021', 'AUD-444', 22000.00, NULL, 'petrol', 'automatic', 5, 'Szeged', 'Szeged', 0, 1, NULL, '2026-04-23 07:05:32'),
@@ -402,6 +346,23 @@ INSERT INTO `vehicle_images` (`image_id`, `vehicle_id`, `image_url`, `descriptio
 (44, 8, 'https://prod.pictures.autoscout24.net/listing-images/75419b8f-a747-44cf-94da-a49be8c3fae6_17a42e23-0d71-44a9-a339-129c38ddcca0.jpg/720x540.webp', 'Dacia Duster elolrol', NULL, NULL),
 (45, 8, 'https://prod.pictures.autoscout24.net/listing-images/75419b8f-a747-44cf-94da-a49be8c3fae6_fabcbcb1-8911-4f7b-9dfb-e6e58b7ad6f0.jpg/720x540.webp', 'Dacia Duster oldal', NULL, NULL);
 
+-- --------------------------------------------------------
+
+--
+-- Tábla szerkezet ehhez a táblához `vehicle_messages`
+--
+
+CREATE TABLE `vehicle_messages` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `vehicle_id` bigint(20) UNSIGNED NOT NULL,
+  `sender_id` bigint(20) UNSIGNED NOT NULL,
+  `rentalagent_id` bigint(20) UNSIGNED NOT NULL,
+  `message` text NOT NULL,
+  `is_read` tinyint(1) NOT NULL DEFAULT 0,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 --
 -- Indexek a kiírt táblákhoz
 --
@@ -421,23 +382,9 @@ ALTER TABLE `cache_locks`
   ADD KEY `cache_locks_expiration_index` (`expiration`);
 
 --
--- A tábla indexei `failed_jobs`
+-- A tábla indexei `contact_messages`
 --
-ALTER TABLE `failed_jobs`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `failed_jobs_uuid_unique` (`uuid`);
-
---
--- A tábla indexei `jobs`
---
-ALTER TABLE `jobs`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `jobs_queue_index` (`queue`);
-
---
--- A tábla indexei `job_batches`
---
-ALTER TABLE `job_batches`
+ALTER TABLE `contact_messages`
   ADD PRIMARY KEY (`id`);
 
 --
@@ -472,23 +419,6 @@ ALTER TABLE `rentals`
   ADD KEY `rentals_vehicle_id_foreign` (`vehicle_id`);
 
 --
--- A tábla indexei `rental_photos`
---
-ALTER TABLE `rental_photos`
-  ADD PRIMARY KEY (`rental_photo_id`),
-  ADD KEY `rental_photos_rental_id_foreign` (`rental_id`),
-  ADD KEY `rental_photos_uploader_user_id_foreign` (`uploader_user_id`);
-
---
--- A tábla indexei `reviews`
---
-ALTER TABLE `reviews`
-  ADD PRIMARY KEY (`review_id`),
-  ADD UNIQUE KEY `reviews_rental_id_unique` (`rental_id`),
-  ADD KEY `reviews_reviewer_user_id_foreign` (`reviewer_user_id`),
-  ADD KEY `reviews_reviewed_user_id_foreign` (`reviewed_user_id`);
-
---
 -- A tábla indexei `sessions`
 --
 ALTER TABLE `sessions`
@@ -521,20 +451,23 @@ ALTER TABLE `vehicle_images`
   ADD KEY `vehicle_images_vehicle_id_foreign` (`vehicle_id`);
 
 --
+-- A tábla indexei `vehicle_messages`
+--
+ALTER TABLE `vehicle_messages`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `vehicle_id` (`vehicle_id`),
+  ADD KEY `sender_id` (`sender_id`),
+  ADD KEY `rentalagent_id` (`rentalagent_id`);
+
+--
 -- A kiírt táblák AUTO_INCREMENT értéke
 --
 
 --
--- AUTO_INCREMENT a táblához `failed_jobs`
+-- AUTO_INCREMENT a táblához `contact_messages`
 --
-ALTER TABLE `failed_jobs`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT a táblához `jobs`
---
-ALTER TABLE `jobs`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+ALTER TABLE `contact_messages`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT a táblához `migrations`
@@ -546,7 +479,7 @@ ALTER TABLE `migrations`
 -- AUTO_INCREMENT a táblához `personal_access_tokens`
 --
 ALTER TABLE `personal_access_tokens`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=39;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=52;
 
 --
 -- AUTO_INCREMENT a táblához `rentalagent_applications`
@@ -558,19 +491,7 @@ ALTER TABLE `rentalagent_applications`
 -- AUTO_INCREMENT a táblához `rentals`
 --
 ALTER TABLE `rentals`
-  MODIFY `rental_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
-
---
--- AUTO_INCREMENT a táblához `rental_photos`
---
-ALTER TABLE `rental_photos`
-  MODIFY `rental_photo_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT a táblához `reviews`
---
-ALTER TABLE `reviews`
-  MODIFY `review_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `rental_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT a táblához `users`
@@ -582,13 +503,19 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT a táblához `vehicles`
 --
 ALTER TABLE `vehicles`
-  MODIFY `vehicle_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `vehicle_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT a táblához `vehicle_images`
 --
 ALTER TABLE `vehicle_images`
-  MODIFY `image_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=46;
+  MODIFY `image_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=47;
+
+--
+-- AUTO_INCREMENT a táblához `vehicle_messages`
+--
+ALTER TABLE `vehicle_messages`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- Megkötések a kiírt táblákhoz
@@ -609,21 +536,6 @@ ALTER TABLE `rentals`
   ADD CONSTRAINT `rentals_vehicle_id_foreign` FOREIGN KEY (`vehicle_id`) REFERENCES `vehicles` (`vehicle_id`);
 
 --
--- Megkötések a táblához `rental_photos`
---
-ALTER TABLE `rental_photos`
-  ADD CONSTRAINT `rental_photos_rental_id_foreign` FOREIGN KEY (`rental_id`) REFERENCES `rentals` (`rental_id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `rental_photos_uploader_user_id_foreign` FOREIGN KEY (`uploader_user_id`) REFERENCES `users` (`user_id`);
-
---
--- Megkötések a táblához `reviews`
---
-ALTER TABLE `reviews`
-  ADD CONSTRAINT `reviews_rental_id_foreign` FOREIGN KEY (`rental_id`) REFERENCES `rentals` (`rental_id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `reviews_reviewed_user_id_foreign` FOREIGN KEY (`reviewed_user_id`) REFERENCES `users` (`user_id`),
-  ADD CONSTRAINT `reviews_reviewer_user_id_foreign` FOREIGN KEY (`reviewer_user_id`) REFERENCES `users` (`user_id`);
-
---
 -- Megkötések a táblához `sessions`
 --
 ALTER TABLE `sessions`
@@ -640,6 +552,14 @@ ALTER TABLE `vehicles`
 --
 ALTER TABLE `vehicle_images`
   ADD CONSTRAINT `vehicle_images_vehicle_id_foreign` FOREIGN KEY (`vehicle_id`) REFERENCES `vehicles` (`vehicle_id`) ON DELETE CASCADE;
+
+--
+-- Megkötések a táblához `vehicle_messages`
+--
+ALTER TABLE `vehicle_messages`
+  ADD CONSTRAINT `vehicle_messages_ibfk_1` FOREIGN KEY (`vehicle_id`) REFERENCES `vehicles` (`vehicle_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `vehicle_messages_ibfk_2` FOREIGN KEY (`sender_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `vehicle_messages_ibfk_3` FOREIGN KEY (`rentalagent_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
