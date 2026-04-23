@@ -13,11 +13,11 @@ class RentalController extends Controller
         $user = auth()->user();
 
         if ($user->role === 'admin') {
-            return Rental::with('user', 'vehicle')->paginate(15);
+            return Rental::with('user', 'vehicle.images')->paginate(15);
         }
 
         if ($user->role === 'rentalagent') {
-            return Rental::with('user', 'vehicle')
+            return Rental::with('user', 'vehicle.images')
                 ->whereHas('vehicle', function ($q) use ($user) {
                     $q->where('rentalagent_id', $user->user_id);
                 })
@@ -25,7 +25,7 @@ class RentalController extends Controller
         }
 
         return Rental::where('user_id', $user->user_id)
-            ->with('user', 'vehicle')
+            ->with('user', 'vehicle.images')
             ->paginate(15);
     }
 
