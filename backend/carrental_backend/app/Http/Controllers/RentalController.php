@@ -18,6 +18,13 @@ class RentalController extends Controller
     {
         $user = auth()->user();
 
+        // Ha ?my=1 paraméter van, mindig csak a saját (bérlőként indított) bérlések
+        if ($request->query('my')) {
+            return Rental::where('user_id', $user->user_id)
+                ->with('user', 'vehicle.images')
+                ->get();
+        }
+
         if ($user->role === 'admin') {
             // Admin látja az összes bérlést
             return Rental::with('user', 'vehicle.images')
@@ -25,7 +32,7 @@ class RentalController extends Controller
         }
 
         if ($user->role === 'rentalagent') {
-            // Rental Agent csak a saját járműveit érintő bérléseket látja
+            // Rental Agent látja a saját járműveire vonatkozó bérléseket (agent dashboard-hoz)
             return Rental::with('user', 'vehicle.images')
                 ->whereHas('vehicle', function ($q) use ($user) {
                     $q->where('rentalagent_id', $user->user_id);
@@ -86,7 +93,7 @@ class RentalController extends Controller
         $total_price = $days * $vehicle->daily_rate;
 
         // 4. További adatok hozzáadása a bérléshez
-        $validated['user_id']         = auth()->id();
+        $validated['user_id']         = auth()->user()->user_id;
         $validated['total_price']     = $total_price;
         $validated['rental_status']   = 'pending_approval';   // alapállapot
 
