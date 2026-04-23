@@ -9,6 +9,7 @@ export default {
     const vehicles = ref([])
     const users = ref([])
     const rentals = ref([])
+    const applications = ref([])
     const loading = ref(true)
     const activeTab = ref('overview')
 
@@ -103,15 +104,40 @@ export default {
 
         rentals.value = Array.isArray(rentalRes.data) ? rentalRes.data : rentalRes.data?.data ?? []
 
+        // Bérbeadói kérelmek lekérése
+        const appRes = await axios.get('http://127.0.0.1:8000/api/rentalagent-applications', { headers: getHeaders() })
+        applications.value = Array.isArray(appRes.data) ? appRes.data : appRes.data?.data ?? []
+
         stats.value.totalVehicles = vehicles.value.length
         stats.value.totalUsers = users.value.length
         stats.value.totalRentals = rentals.value.length
-        stats.value.pendingApprovals = vehicles.value.filter(v => !v.is_approved).length
+        stats.value.pendingApprovals = applications.value.filter(a => a.status === 'pending').length
 
       } catch (err) {
         console.error('Admin fetch hiba:', err.response?.status, err.response?.data)
       } finally {
         loading.value = false
+      }
+    }
+
+    // --- Bérbeadói kérelem műveletek ---
+    const approveApplication = async (id) => {
+      if (!confirm('Biztosan jóváhagyod ezt a bérbeadói kérelmet?')) return
+      try {
+        await axios.post(`http://127.0.0.1:8000/api/rentalagent-applications/${id}/approve`, {}, { headers: getHeaders() })
+        await fetchData()
+      } catch (err) {
+        alert(err.response?.data?.message ?? 'Hiba a jóváhagyás során.')
+      }
+    }
+
+    const rejectApplication = async (id) => {
+      if (!confirm('Biztosan elutasítod ezt a bérbeadói kérelmet?')) return
+      try {
+        await axios.post(`http://127.0.0.1:8000/api/rentalagent-applications/${id}/reject`, {}, { headers: getHeaders() })
+        await fetchData()
+      } catch (err) {
+        alert(err.response?.data?.message ?? 'Hiba az elutasítás során.')
       }
     }
 
@@ -160,9 +186,10 @@ export default {
     onMounted(fetchData)
 
     return {
-      stats, vehicles, users, rentals, loading, activeTab,
+      stats, vehicles, users, rentals, applications, loading, activeTab,
       apiStatus, statusChecking, checkApiStatus,
       formatFt, statusLabel, statusClass, roleLabel, roleClass,
+      approveApplication, rejectApplication,
       approveVehicle, rejectVehicle, deleteVehicle, deleteUser
     }
   }
@@ -239,6 +266,15 @@ export default {
             <li class="nav-item">
               <button class="nav-link" :class="{ active: activeTab === 'rentals' }" @click="activeTab = 'rentals'">
                 <i class="bi bi-calendar-event me-2"></i>Bérlések
+              </button>
+            </li>
+            <li class="nav-item">
+              <button class="nav-link position-relative" :class="{ active: activeTab === 'applications' }" @click="activeTab = 'applications'">
+                <i class="bi bi-person-badge me-2"></i>Bérbeadói kérelmek
+                <span v-if="applications.filter(a => a.status === 'pending').length > 0"
+                      class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:10px">
+                  <span style="color:white">{{ applications.filter(a => a.status === 'pending').length }}</span>
+                </span>
               </button>
             </li>
           </ul>
@@ -433,6 +469,58 @@ export default {
                     <span v-else :class="['badge', statusClass(r.rental_status)]">
                       {{ statusLabel(r.rental_status) }}
                     </span>
+                  </td>
+                </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+
+          <!-- Bérbeadói kérelmek -->
+          <div v-if="activeTab === 'applications'" class="fade-in">
+            <h5 class="fw-bold text-success mb-4">Bérbeadói Kérelmek</h5>
+            <div v-if="loading" class="text-center py-5"><div class="spinner-border text-success"></div></div>
+            <div v-else-if="applications.length === 0" class="text-center py-5 border rounded-3 bg-light">
+              <i class="bi bi-person-badge fs-1 text-muted mb-3 d-block"></i>
+              <p class="text-muted">Nincsenek bérbeadói kérelmek.</p>
+            </div>
+            <div v-else class="table-responsive">
+              <table class="table admin-table mb-0">
+                <thead>
+                <tr>
+                  <th>Felhasználó</th>
+                  <th>E-mail</th>
+                  <th>Beküldve</th>
+                  <th>Státusz</th>
+                  <th class="text-end">Műveletek</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr v-for="app in applications" :key="app.application_id">
+                  <td class="fw-bold">{{ app.user ? `${app.user.first_name} ${app.user.last_name}` : '–' }}</td>
+                  <td>{{ app.user?.email ?? '–' }}</td>
+                  <td>{{ app.created_at?.slice(0, 10) }}</td>
+                  <td>
+                    <span :class="['badge', app.status === 'approved' ? 'bg-primary-soft' : app.status === 'rejected' ? 'bg-danger-soft' : 'bg-warning-soft']">
+                      {{ app.status === 'approved' ? 'Jóváhagyva' : app.status === 'rejected' ? 'Elutasítva' : 'Függőben' }}
+                    </span>
+                  </td>
+                  <td class="text-end">
+                    <button
+                        v-if="app.status === 'pending'"
+                        class="btn btn-sm btn-icon-only me-1"
+                        title="Jóváhagyás"
+                        @click="approveApplication(app.application_id)">
+                      <i class="bi bi-check-circle-fill text-success fs-5"></i>
+                    </button>
+                    <button
+                        v-if="app.status === 'pending'"
+                        class="btn btn-sm btn-icon-only"
+                        title="Elutasítás"
+                        @click="rejectApplication(app.application_id)">
+                      <i class="bi bi-x-circle-fill text-danger fs-5"></i>
+                    </button>
                   </td>
                 </tr>
                 </tbody>
