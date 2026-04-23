@@ -1,12 +1,13 @@
 <script>
 import { onMounted, ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import axios from 'axios'
 
 export default {
   name: 'VehiclesView',
   setup() {
     const router = useRouter()
+    const route = useRoute()
     const vehicles = ref([])
     const loading = ref(true)
     const error = ref(null)
@@ -15,6 +16,9 @@ export default {
     const selectedTransmission = ref('')
     const minPrice = ref(0)
     const maxPrice = ref(1000000)
+    const searchStartDate = ref('')
+    const searchEndDate = ref('')
+    const searchLocation = ref('')
 
     const fuelTranslations = {
       'petrol': 'Benzin',
@@ -28,6 +32,11 @@ export default {
     }
 
     onMounted(async () => {
+      // URL query paraméterek beolvasása (HomeView keresőből)
+      if (route.query.startDate) searchStartDate.value = route.query.startDate
+      if (route.query.endDate) searchEndDate.value = route.query.endDate
+      if (route.query.location) searchLocation.value = route.query.location
+
       try {
         const res = await axios.get('http://localhost:8000/api/vehicles')
         vehicles.value = Array.isArray(res.data) ? res.data : []
@@ -44,7 +53,10 @@ export default {
         const trans = !selectedTransmission.value || v.transmission_type === selectedTransmission.value
         const rate = Number(v.daily_rate)
         const price = rate >= minPrice.value && rate <= maxPrice.value
-        return fuel && trans && price
+        const location = !searchLocation.value ||
+            (v.location_pickup || '').toLowerCase().includes(searchLocation.value.toLowerCase()) ||
+            (v.location_return || '').toLowerCase().includes(searchLocation.value.toLowerCase())
+        return fuel && trans && price && location
       })
     })
 
@@ -59,6 +71,9 @@ export default {
       selectedTransmission,
       minPrice,
       maxPrice,
+      searchStartDate,
+      searchEndDate,
+      searchLocation,
       filteredVehicles,
       viewVehicle,
       fuelTranslations,
@@ -95,6 +110,15 @@ export default {
             <i class="bi bi-funnel-fill me-2"></i>Szűrők
           </h5>
 
+          <label class="form-label">Helyszín</label>
+          <input type="text" class="form-control mb-3" v-model="searchLocation" placeholder="pl. Budapest" />
+
+          <label class="form-label">Bérlés kezdete</label>
+          <input type="date" class="form-control mb-3" v-model="searchStartDate" />
+
+          <label class="form-label">Bérlés vége</label>
+          <input type="date" class="form-control mb-3" v-model="searchEndDate" />
+
           <label class="form-label">Üzemanyag</label>
           <select class="form-select mb-3" v-model="selectedFuelType">
             <option value="">Összes</option>
@@ -124,6 +148,16 @@ export default {
 
       <div class="col-lg-9">
 
+        <div v-if="searchStartDate || searchEndDate || searchLocation" class="alert alert-success d-flex align-items-center gap-2 mb-3 py-2">
+          <i class="bi bi-search"></i>
+          <span>
+            <span v-if="searchLocation"><strong>Helyszín:</strong> {{ searchLocation }} </span>
+            <span v-if="searchStartDate"><strong>Kezdés:</strong> {{ searchStartDate }} </span>
+            <span v-if="searchEndDate"><strong>Befejezés:</strong> {{ searchEndDate }} </span>
+            &mdash; {{ filteredVehicles.length }} találat
+          </span>
+        </div>
+
         <div v-if="loading" class="text-center py-5">
           <div class="spinner-border text-success"></div>
         </div>
@@ -135,55 +169,61 @@ export default {
         <div v-else class="row g-4">
 
           <div class="col-md-6 col-lg-4" v-for="v in filteredVehicles" :key="v.vehicle_id">
-
             <div class="vehicle-card">
 
-              <img class="vehicle-img"
-                   src="https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=600"
-                   alt="car">
+              <div class="vehicle-img-wrapper">
+                <img
+                    :src="v.images && v.images.length ? v.images[0].image_url : 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=600'"
+                    :alt="v.brand + ' ' + v.model"
+                    class="vehicle-img"
+                >
+                <div class="vehicle-img-overlay">
+                  <span class="availability-badge" :class="v.is_available ? 'avail-yes' : 'avail-no'">
+                    <i :class="v.is_available ? 'bi bi-check-circle-fill' : 'bi bi-x-circle-fill'"></i>
+                    {{ v.is_available ? 'Szabad' : 'Foglalt' }}
+                  </span>
+                </div>
+              </div>
 
-              <div class="p-3">
+              <div class="vehicle-card-body">
+                <div class="d-flex justify-content-between align-items-start mb-1">
+                  <div>
+                    <h5 class="fw-bold mb-0 card-title-text">{{ v.brand }} {{ v.model }}</h5>
+                    <span class="text-muted small"><i class="bi bi-calendar3 me-1"></i>{{ v.year }}</span>
+                  </div>
+                  <div class="text-end">
+                    <div class="price-amount">{{ formatPrice(v.daily_rate) }}</div>
+                    <div class="price-label">/ nap</div>
+                  </div>
+                </div>
 
-                <h5 class="fw-bold text-success">
-                  {{ v.brand }} {{ v.model }}
-                </h5>
+                <hr class="card-divider">
 
-                <p class="text-muted mb-2">
-                  <i class="bi bi-calendar me-1"></i>{{ v.year }}
-                </p>
-
-                <div class="d-flex gap-2 flex-wrap mb-3">
-
-                  <span class="badge bg-light text-success">
-                    <i class="bi bi-fuel-pump me-1"></i>
+                <div class="spec-grid">
+                  <div class="spec-pill">
+                    <i class="bi bi-fuel-pump-fill"></i>
                     {{ fuelTranslations[v.fuel_type] || v.fuel_type }}
-                  </span>
-
-                  <span class="badge bg-light text-success">
-                    <i class="bi bi-gear me-1"></i>
+                  </div>
+                  <div class="spec-pill">
+                    <i class="bi bi-gear-fill"></i>
                     {{ v.transmission_type === 'manual' ? 'Manuális' : 'Automata' }}
-                  </span>
-
-                  <span class="badge bg-light text-success">
-                    <i class="bi bi-people me-1"></i>{{ v.number_of_seats }}
-                  </span>
-
+                  </div>
+                  <div class="spec-pill">
+                    <i class="bi bi-people-fill"></i>
+                    {{ v.number_of_seats }} fő
+                  </div>
+                  <div class="spec-pill">
+                    <i class="bi bi-geo-alt-fill"></i>
+                    {{ v.location_pickup || '–' }}
+                  </div>
                 </div>
 
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                  <span class="price text-success fw-bold">
-                    {{ formatPrice(v.daily_rate) }} / nap
-                  </span>
-                </div>
-
-                <button class="btn btn-success w-100" @click="viewVehicle(v.vehicle_id)">
-                  <i class="bi bi-eye me-2"></i>Részletek
+                <button class="btn-details w-100 mt-3" @click="viewVehicle(v.vehicle_id)">
+                  <i class="bi bi-arrow-right-circle me-2"></i>Részletek
                 </button>
-
               </div>
 
             </div>
-
           </div>
 
         </div>
@@ -238,20 +278,130 @@ export default {
 
 .vehicle-card {
   background: white;
-  border-radius: 20px;
+  border-radius: 22px;
   overflow: hidden;
-  box-shadow: 0 5px 20px rgba(0,0,0,0.08);
-  transition: 0.3s;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+  transition: transform 0.28s ease, box-shadow 0.28s ease;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
-
 .vehicle-card:hover {
-  transform: translateY(-5px);
+  transform: translateY(-7px);
+  box-shadow: 0 14px 40px rgba(25,135,84,0.14);
 }
 
+/* IMAGE */
+.vehicle-img-wrapper {
+  position: relative;
+  overflow: hidden;
+}
 .vehicle-img {
   width: 100%;
-  height: 180px;
+  height: 195px;
   object-fit: cover;
+  transition: transform 0.4s ease;
+}
+.vehicle-card:hover .vehicle-img {
+  transform: scale(1.06);
+}
+.vehicle-img-overlay {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+.availability-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 20px;
+  backdrop-filter: blur(6px);
+}
+.avail-yes {
+  background: rgba(25,135,84,0.85);
+  color: white;
+}
+.avail-no {
+  background: rgba(217,48,37,0.85);
+  color: white;
+}
+
+/* CARD BODY */
+.vehicle-card-body {
+  padding: 1.1rem 1.25rem 1.25rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.card-title-text {
+  font-size: 1.05rem;
+  color: #1a1a1a;
+}
+.card-divider {
+  border-color: #f0f0f0;
+  margin: 0.6rem 0;
+}
+
+/* PRICE */
+.price-amount {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #198754;
+  white-space: nowrap;
+}
+.price-label {
+  font-size: 11px;
+  color: #aaa;
+  text-align: right;
+}
+
+/* SPECS */
+.spec-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.spec-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #444;
+  background: #f5f5f5;
+  padding: 5px 10px;
+  border-radius: 20px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.spec-pill i {
+  color: #198754;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+/* BUTTON */
+.btn-details {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #198754;
+  color: white;
+  border: none;
+  border-radius: 50px;
+  padding: 10px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s;
+  margin-top: auto;
+}
+.btn-details:hover {
+  background: #146c43;
+  transform: scale(1.02);
 }
 
 .price {
