@@ -6,7 +6,6 @@ use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\RentalagentApplicationController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\RentalController;
-use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\VehicleImageController;
 use App\Http\Controllers\RentalPhotoController;
 use App\Http\Controllers\UserController;
@@ -30,7 +29,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/rentals', [RentalController::class, 'index']);
     Route::apiResource('rentals', RentalController::class)->except(['index']);
-    Route::apiResource('reviews', ReviewController::class);
     Route::apiResource('vehicle-images', VehicleImageController::class);
     Route::apiResource('rental-photos', RentalPhotoController::class);
     Route::apiResource('rentalagent-applications', RentalagentApplicationController::class);
