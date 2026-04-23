@@ -74,7 +74,7 @@ export default {
           </li>
 
           <li class="nav-item ms-lg-2" v-if="!isAuthenticated">
-            <RouterLink class="btn btn-success rounded-pill px-4" to="/auth/login" @click="closeDropdown">
+            <RouterLink class="login-btn" to="/auth/login" @click="closeDropdown">
               Bejelentkezés
             </RouterLink>
           </li>
@@ -147,18 +147,35 @@ export default {
   padding: 0.5rem 1rem !important;
   transition: 0.3s;
 }
-.nav-link:hover {
-  color: #198754 !important;
+.nav-link:hover { color: #198754 !important; }
+
+.login-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #198754;
+  color: white !important;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 8px 22px;
+  border-radius: 50px;
+  text-decoration: none;
+  transition: background 0.2s, transform 0.15s;
 }
+.login-btn:hover {
+  background: #198754;
+  color: white !important;
+  opacity: 0.9;
+  transform: scale(1.02);
+}
+
 .user-pill {
   background: #f0fdf4;
   border: 1px solid #d1fae5;
   border-radius: 999px;
   color: #198754 !important;
 }
-.dropdown-menu.show {
-  animation: fadeIn 0.2s ease-out;
-}
+.dropdown-menu.show { animation: fadeIn 0.2s ease-out; }
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(-10px); }
   to { opacity: 1; transform: translateY(0); }
@@ -171,8 +188,6 @@ export default {
     margin-top: 1rem;
     box-shadow: 0 10px 25px rgba(0,0,0,0.1);
   }
-  .user-pill {
-    border-radius: 10px;
-  }
+  .user-pill { border-radius: 10px; }
 }
 </style>

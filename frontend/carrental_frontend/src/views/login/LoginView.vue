@@ -58,74 +58,125 @@ export default {
       }
     }
 
-    return {
-      email,
-      password,
-      loading,
-      error,
-      successMessage,
-      handleLogin,
-    }
+    return { email, password, loading, error, successMessage, handleLogin }
   }
 }
 </script>
 
 <template>
-  <div class="container py-5">
-    <div class="row justify-content-center">
-      <div class="col-md-5">
-        <div class="card login-card">
-          <div class="card-body p-4">
+  <div class="login-wrapper">
+    <div class="login-card">
 
-            <div class="text-center mb-4">
-              <i class="bi bi-car-front-fill text-success fs-1"></i>
-              <h3 class="mt-2">Bejelentkezés</h3>
-              <p class="text-muted mb-0">CarRental Pro</p>
-            </div>
-
-            <div v-if="error" class="alert alert-danger border-0 small">{{ error }}</div>
-            <div v-if="successMessage" class="alert alert-success border-0 small">{{ successMessage }}</div>
-
-            <div class="mb-3">
-              <label class="form-label small fw-bold">E-mail</label>
-              <input type="email" class="form-control rounded-3" v-model="email" placeholder="pelda@email.hu">
-            </div>
-
-            <div class="mb-3">
-              <label class="form-label small fw-bold">Jelszó</label>
-              <input type="password" class="form-control rounded-3" v-model="password" placeholder="••••••••">
-            </div>
-
-            <button
-                class="btn btn-success w-100 rounded-pill py-2 fw-bold"
-                :disabled="loading"
-                @click="handleLogin"
-            >
-              <span v-if="!loading">Bejelentkezés</span>
-              <span v-else class="spinner-border spinner-border-sm"></span>
-            </button>
-
-            <div class="mt-4 text-center">
-              <RouterLink to="/auth/register" class="text-success text-decoration-none small">
-                Nincs fiókod? <strong>Regisztráció</strong>
-              </RouterLink>
-            </div>
-
-          </div>
-        </div>
+      <div class="text-center mb-4">
+        <i class="bi bi-car-front-fill login-icon"></i>
+        <h3 class="fw-bold mt-2 mb-0">Bejelentkezés</h3>
+        <p class="text-muted small mt-1 mb-0">CarRental Pro</p>
       </div>
+
+      <div v-if="error" class="alert-box alert-error">
+        <i class="bi bi-exclamation-circle me-2"></i>{{ error }}
+      </div>
+      <div v-if="successMessage" class="alert-box alert-success">
+        <i class="bi bi-check-circle me-2"></i>{{ successMessage }}
+      </div>
+
+      <div class="mb-3">
+        <label class="login-label">E-mail cím</label>
+        <input type="email" class="login-input" v-model="email" placeholder="pelda@email.hu" />
+      </div>
+
+      <div class="mb-4">
+        <label class="login-label">Jelszó</label>
+        <input type="password" class="login-input" v-model="password" placeholder="••••••••" @keyup.enter="handleLogin" />
+      </div>
+
+      <button class="login-btn w-100" @click="handleLogin" :disabled="loading">
+        <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
+        <i v-else class="bi bi-box-arrow-in-right me-2"></i>
+        Bejelentkezés
+      </button>
+
+      <div class="text-center mt-3">
+        <span class="text-muted small">Nincs még fiókod? </span>
+        <RouterLink to="/auth/register" class="text-success fw-bold small text-decoration-none">
+          Regisztráció
+        </RouterLink>
+      </div>
+
     </div>
   </div>
 </template>
 
 <style scoped>
+.login-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+}
+
 .login-card {
+  background: white;
   border-radius: 20px;
-  border: none;
+  padding: 1.5rem;
+  width: 100%;
+  max-width: 460px;
   box-shadow: 0 10px 40px rgba(0,0,0,0.08);
 }
-.form-control:focus {
-  border-color: #198754;
-  box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.1);
+
+.login-icon {
+  font-size: 2.5rem;
+  color: #198754;
+  display: block;
 }
+
+.login-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #555;
+  margin-bottom: 5px;
+}
+
+.login-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid #dee2e6;
+  border-radius: 10px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+  color: #212529;
+  background: #fff;
+}
+.login-input:focus {
+  border-color: #198754;
+  box-shadow: 0 0 0 3px rgba(25,135,84,0.1);
+}
+
+.login-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #198754;
+  color: white;
+  border: none;
+  border-radius: 50px;
+  padding: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s;
+}
+.login-btn:hover:not(:disabled) { background: #198754; opacity: 0.9; transform: scale(1.02); }
+.login-btn:disabled { opacity: 0.7; cursor: not-allowed; }
+
+.alert-box {
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 13px;
+  margin-bottom: 1rem;
+}
+.alert-error { background: #fce8e6; color: #d93025; }
+.alert-success { background: #e6f4ea; color: #198754; }
 </style>

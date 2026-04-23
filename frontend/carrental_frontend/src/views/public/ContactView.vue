@@ -35,7 +35,7 @@ export default {
           </div>
           <div class="contact-item">
             <i class="bi bi-telephone-fill"></i>
-            <span>+36 20 409 1502</span>
+            <span>+36 20 123 4567</span>
           </div>
           <div class="contact-item mb-0">
             <i class="bi bi-geo-alt-fill"></i>
