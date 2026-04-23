@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Rental;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class RentalController extends Controller
 {
@@ -30,9 +31,18 @@ class RentalController extends Controller
 
     public function show($id)
     {
+        $user = auth()->user();
         $rental = Rental::with('user', 'vehicle', 'photos', 'review')->findOrFail($id);
-        $this->authorize('view', $rental);
-        return $rental;
+
+        $canView = $user->role === 'admin'
+            || $rental->user_id === $user->user_id
+            || ($user->role === 'rentalagent' && $rental->vehicle && $rental->vehicle->rentalagent_id === $user->user_id);
+
+        if (!$canView) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
+
+        return response()->json($rental);
     }
 
     public function store(Request $request)
@@ -47,7 +57,6 @@ class RentalController extends Controller
 
         $vehicle = \App\Models\Vehicle::findOrFail($validated['vehicle_id']);
 
-        // Calculate total price
         $start = new \DateTime($validated['start_date']);
         $end = new \DateTime($validated['end_date']);
         $days = $start->diff($end)->days;
@@ -63,25 +72,58 @@ class RentalController extends Controller
 
     public function update(Request $request, $id)
     {
-        $rental = Rental::findOrFail($id);
-        $this->authorize('update', $rental);
+        $user = auth()->user();
+        $rental = Rental::with('vehicle')->findOrFail($id);
+
+        // Jogosultság ellenőrzés: admin, a bérlő maga, vagy a jármű bérbeadója
+        $canUpdate = $user->role === 'admin'
+            || $rental->user_id === $user->user_id
+            || ($user->role === 'rentalagent' && $rental->vehicle && $rental->vehicle->rentalagent_id === $user->user_id);
+
+        if (!$canUpdate) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
 
         $validated = $request->validate([
-            'rental_status' => 'in:pending_approval,approved,rejected,in_progress,completed,cancelled',
+            'rental_status' => 'sometimes|in:pending_approval,approved,rejected,in_progress,completed,cancelled',
             'actual_return_date' => 'nullable|date_format:Y-m-d H:i:s',
         ]);
 
+        $oldStatus = $rental->rental_status;
+        $newStatus = $validated['rental_status'] ?? null;
+
+        // Jóváhagyáskor: az autó legyen foglalt az adatbázisban
+        if ($newStatus === 'approved' && $oldStatus !== 'approved') {
+            $validated['rentalagent_decision_date'] = now();
+            \App\Models\Vehicle::where('vehicle_id', $rental->vehicle_id)
+                ->update(['is_available' => false]);
+        }
+
+        // Elutasítás / lemondás / befejezéskor: az autó újra szabad legyen
+        if (in_array($newStatus, ['rejected', 'cancelled', 'completed']) &&
+            !in_array($oldStatus, ['rejected', 'cancelled', 'completed'])) {
+            $validated['rentalagent_decision_date'] = now();
+            \App\Models\Vehicle::where('vehicle_id', $rental->vehicle_id)
+                ->update(['is_available' => true]);
+        }
+
         $rental->update($validated);
-        return $rental;
+        return response()->json($rental->fresh());
     }
 
     public function destroy($id)
     {
-        $rental = Rental::findOrFail($id);
-        $this->authorize('delete', $rental);
-        $rental->delete();
+        $user = auth()->user();
+        $rental = Rental::with('vehicle')->findOrFail($id);
 
+        $canDelete = $user->role === 'admin'
+            || $rental->user_id === $user->user_id;
+
+        if (!$canDelete) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
+
+        $rental->delete();
         return response()->noContent();
     }
 }
-
