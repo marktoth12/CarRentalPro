@@ -15,6 +15,62 @@ export default {
     const showEditModal = ref(false)
     const saveLoading = ref(false)
 
+    const showAddModal = ref(false)
+    const addLoading = ref(false)
+    const newVehicle = ref({
+      brand: '',
+      model: '',
+      year: new Date().getFullYear(),
+      license_plate: '',
+      daily_rate: '',
+      fuel_type: 'petrol',
+      transmission_type: 'manual',
+      number_of_seats: 5,
+      location_pickup: '',
+      location_return: '',
+      description: ''
+    })
+
+    const openAddModal = () => {
+      newVehicle.value = {
+        brand: '',
+        model: '',
+        year: new Date().getFullYear(),
+        license_plate: '',
+        daily_rate: '',
+        fuel_type: 'petrol',
+        transmission_type: 'manual',
+        number_of_seats: 5,
+        location_pickup: '',
+        location_return: '',
+        description: ''
+      }
+      showAddModal.value = true
+    }
+
+    const closeAddModal = () => {
+      showAddModal.value = false
+    }
+
+    const addVehicle = async () => {
+      addLoading.value = true
+      try {
+        await axios.post('http://127.0.0.1:8000/api/vehicles', newVehicle.value, { headers: getHeaders() })
+        await fetchData()
+        closeAddModal()
+        alert('Jármű sikeresen hozzáadva! Az admin jóváhagyása után jelenik meg az oldalon.')
+      } catch (err) {
+        const errors = err.response?.data?.errors
+        if (errors) {
+          alert(Object.values(errors).flat().join('\n'))
+        } else {
+          alert(err.response?.data?.message ?? 'Hiba történt a jármű hozzáadásakor.')
+        }
+      } finally {
+        addLoading.value = false
+      }
+    }
+
     const formatFt = (amount) => {
       return Number(amount).toLocaleString('hu-HU') + ' Ft'
     }
@@ -67,18 +123,19 @@ export default {
         const rawRentals = Array.isArray(rentalRes.data) ? rentalRes.data : (rentalRes.data?.data ?? [])
         rentals.value = rawRentals
 
+        const now = new Date()
         const rawVehicles = Array.isArray(vehicleRes.data) ? vehicleRes.data : []
         vehicles.value = rawVehicles.map(v => {
+          // Aktív, le nem járt approved/in_progress bérlés
           const activeRental = rentals.value.find(r =>
               r.vehicle_id === v.vehicle_id &&
-              ['pending_approval', 'approved', 'in_progress'].includes(r.rental_status)
+              ['approved', 'in_progress'].includes(r.rental_status) &&
+              new Date(r.end_date) > now
           )
-
           return {
             ...v,
             id: v.vehicle_id,
-            is_available: !activeRental,
-            currentRentalStatus: activeRental ? activeRental.rental_status : null,
+            activeRentalStatus: activeRental ? activeRental.rental_status : null,
             is_approved: Boolean(Number(v.is_approved))
           }
         })
@@ -110,15 +167,31 @@ export default {
     const saveVehicle = async () => {
       saveLoading.value = true
       try {
+        // Csak az engedélyezett mezőket küldjük, hogy ne zavarja a backend validációt
+        const payload = {
+          brand: editingVehicle.value.brand,
+          model: editingVehicle.value.model,
+          year: editingVehicle.value.year,
+          license_plate: editingVehicle.value.license_plate,
+          daily_rate: editingVehicle.value.daily_rate,
+          fuel_type: editingVehicle.value.fuel_type,
+          transmission_type: editingVehicle.value.transmission_type,
+          number_of_seats: editingVehicle.value.number_of_seats,
+          location_pickup: editingVehicle.value.location_pickup,
+          location_return: editingVehicle.value.location_return,
+          description: editingVehicle.value.description,
+        }
         await axios.put(
             `http://127.0.0.1:8000/api/vehicles/${editingVehicle.value.vehicle_id}`,
-            editingVehicle.value,
+            payload,
             { headers: getHeaders() }
         )
         await fetchData()
         closeEdit()
+        alert('A jármű adatai sikeresen mentve!')
       } catch (err) {
         console.error('Mentési hiba:', err.response?.status, err.response?.data)
+        alert(err.response?.data?.message ?? 'Mentési hiba történt.')
       } finally {
         saveLoading.value = false
       }
@@ -134,24 +207,32 @@ export default {
       }
     }
 
-    // Új: Bérlés jóváhagyása / elutasítása
+    // Bérlés jóváhagyása / elutasítása
     const approveRental = async (rentalId) => {
       if (!confirm('Biztosan jóváhagyod ezt a bérlést?')) return
       try {
-        await axios.post(`http://127.0.0.1:8000/api/rentals/${rentalId}/approve`, {}, { headers: getHeaders() })
+        await axios.put(
+            `http://127.0.0.1:8000/api/rentals/${rentalId}`,
+            { rental_status: 'approved' },
+            { headers: getHeaders() }
+        )
         await fetchData()
       } catch (err) {
-        alert('Hiba a jóváhagyás során')
+        alert(err.response?.data?.message ?? 'Hiba a jóváhagyás során')
       }
     }
 
     const rejectRental = async (rentalId) => {
       if (!confirm('Biztosan elutasítod ezt a bérlést?')) return
       try {
-        await axios.post(`http://127.0.0.1:8000/api/rentals/${rentalId}/reject`, {}, { headers: getHeaders() })
+        await axios.put(
+            `http://127.0.0.1:8000/api/rentals/${rentalId}`,
+            { rental_status: 'rejected' },
+            { headers: getHeaders() }
+        )
         await fetchData()
       } catch (err) {
-        alert('Hiba az elutasítás során')
+        alert(err.response?.data?.message ?? 'Hiba az elutasítás során')
       }
     }
 
@@ -162,7 +243,8 @@ export default {
       statusLabel, statusClass, formatFt,
       editingVehicle, showEditModal, saveLoading,
       openEdit, closeEdit, saveVehicle, deleteVehicle,
-      approveRental, rejectRental
+      approveRental, rejectRental,
+      showAddModal, addLoading, newVehicle, openAddModal, closeAddModal, addVehicle
     }
   }
 }
@@ -207,13 +289,7 @@ export default {
             <p class="text-muted small text-uppercase mb-0">Összes Bevétel</p>
           </div>
         </div>
-        <div class="col-md-3">
-          <div class="custom-stat-card">
-            <i class="bi bi-hourglass-split admin-icon"></i>
-            <h3 class="fw-bold text-success mb-1">{{ stats.pendingRequests }}</h3>
-            <p class="text-muted small text-uppercase mb-0">Függő Kérelmek</p>
-          </div>
-        </div>
+
       </div>
 
       <div class="admin-main-card">
@@ -234,11 +310,7 @@ export default {
                 <i class="bi bi-calendar-event me-2"></i>Bérlések
               </button>
             </li>
-            <li class="nav-item">
-              <button class="nav-link" :class="{ active: activeTab === 'requests' }" @click="activeTab = 'requests'">
-                <i class="bi bi-inbox-fill me-2"></i>Kérelmek
-              </button>
-            </li>
+
           </ul>
         </div>
 
@@ -266,7 +338,7 @@ export default {
               </div>
             </div>
             <div class="d-flex gap-2">
-              <button class="btn btn-success rounded-pill px-4"><i class="bi bi-plus-circle me-2"></i>Új autó felvétele</button>
+              <button class="btn btn-success rounded-pill px-4" @click="openAddModal"><i class="bi bi-plus-circle me-2"></i>Új autó felvétele</button>
             </div>
           </div>
 
@@ -287,7 +359,6 @@ export default {
                   <th>Rendszám</th>
                   <th>Napi Ár</th>
                   <th>Állapot</th>
-                  <th>Jóváhagyva</th>
                   <th class="text-end">Műveletek</th>
                 </tr>
                 </thead>
@@ -297,13 +368,14 @@ export default {
                   <td><span class="badge bg-light text-dark border">{{ v.license_plate }}</span></td>
                   <td class="text-success fw-bold">{{ formatFt(v.daily_rate) }}</td>
                   <td>
-                    <span :class="['badge', v.currentRentalStatus ? statusClass(v.currentRentalStatus) : 'bg-success-soft']">
-                      {{ v.currentRentalStatus ? statusLabel(v.currentRentalStatus) : 'Szabad' }}
+                    <span v-if="!v.is_approved" class="badge bg-warning-soft">
+                      Jóváhagyásra vár
                     </span>
-                  </td>
-                  <td>
-                    <span :class="['badge', v.is_approved ? 'bg-primary-soft' : 'bg-warning-soft']">
-                      {{ v.is_approved ? 'Igen' : 'Várakozik' }}
+                    <span v-else-if="v.activeRentalStatus === 'approved' || v.activeRentalStatus === 'in_progress'" class="badge bg-danger-soft">
+                      Kiadva
+                    </span>
+                    <span v-else class="badge bg-success-soft">
+                      Szabad
                     </span>
                   </td>
                   <td class="text-end">
@@ -352,22 +424,32 @@ export default {
                   <td>{{ r.pickup_location }}</td>
                   <td class="text-success fw-bold">{{ formatFt(r.total_price) }}</td>
                   <td>
-                    <span :class="['badge', statusClass(r.rental_status)]">
+                    <span v-if="r.rental_status === 'approved' && new Date(r.start_date) <= new Date() && new Date(r.end_date) >= new Date()"
+                          class="badge bg-success-soft">
+                      Folyamatban
+                    </span>
+                    <span v-else-if="r.rental_status === 'approved' && new Date(r.end_date) < new Date()"
+                          class="badge bg-secondary-soft">
+                      Befejezett
+                    </span>
+                    <span v-else :class="['badge', statusClass(r.rental_status)]">
                       {{ statusLabel(r.rental_status) }}
                     </span>
                   </td>
                   <td class="text-end">
                     <button
                         v-if="r.rental_status === 'pending_approval'"
-                        class="btn btn-sm btn-success me-1"
+                        class="btn btn-sm btn-icon-only me-1"
+                        title="Jóváhagyás"
                         @click="approveRental(r.rental_id)">
-                      Jóváhagyás
+                      <i class="bi bi-check-circle-fill text-success fs-5"></i>
                     </button>
                     <button
                         v-if="r.rental_status === 'pending_approval'"
-                        class="btn btn-sm btn-danger"
+                        class="btn btn-sm btn-icon-only"
+                        title="Elutasítás"
                         @click="rejectRental(r.rental_id)">
-                      Elutasítás
+                      <i class="bi bi-x-circle-fill text-danger fs-5"></i>
                     </button>
                   </td>
                 </tr>
@@ -376,11 +458,6 @@ export default {
             </div>
           </div>
 
-          <div v-if="activeTab === 'requests'" class="fade-in">
-            <div class="text-center py-5 text-muted border rounded-3 bg-light">
-              <p class="mb-0">Nincs megválaszolatlan kérelem.</p>
-            </div>
-          </div>
 
         </div>
       </div>
@@ -454,6 +531,80 @@ export default {
           <button class="btn btn-success rounded-pill px-4" @click="saveVehicle" :disabled="saveLoading">
             <span v-if="saveLoading" class="spinner-border spinner-border-sm me-2"></span>
             Mentés
+          </button>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- Új jármű hozzáadása modal -->
+    <div v-if="showAddModal" class="modal-overlay" @click.self="closeAddModal">
+      <div class="modal-box">
+        <div class="modal-header-custom">
+          <h5 class="fw-bold text-success mb-0">Új jármű felvétele</h5>
+          <button class="btn-close-custom" @click="closeAddModal">×</button>
+        </div>
+        <div class="modal-body-custom">
+          <div class="row g-3">
+            <div class="col-6">
+              <label class="form-label-custom">Márka *</label>
+              <input v-model="newVehicle.brand" class="form-input-custom" type="text" placeholder="pl. Toyota" />
+            </div>
+            <div class="col-6">
+              <label class="form-label-custom">Modell *</label>
+              <input v-model="newVehicle.model" class="form-input-custom" type="text" placeholder="pl. Corolla" />
+            </div>
+            <div class="col-6">
+              <label class="form-label-custom">Évjárat *</label>
+              <input v-model="newVehicle.year" class="form-input-custom" type="number" min="1990" :max="new Date().getFullYear()" />
+            </div>
+            <div class="col-6">
+              <label class="form-label-custom">Rendszám *</label>
+              <input v-model="newVehicle.license_plate" class="form-input-custom" type="text" placeholder="pl. ABC-123" />
+            </div>
+            <div class="col-6">
+              <label class="form-label-custom">Napi ár (Ft) *</label>
+              <input v-model="newVehicle.daily_rate" class="form-input-custom" type="number" min="0" />
+            </div>
+            <div class="col-6">
+              <label class="form-label-custom">Ülőhelyek száma *</label>
+              <input v-model="newVehicle.number_of_seats" class="form-input-custom" type="number" min="1" max="20" />
+            </div>
+            <div class="col-6">
+              <label class="form-label-custom">Üzemanyag *</label>
+              <select v-model="newVehicle.fuel_type" class="form-input-custom">
+                <option value="petrol">Benzin</option>
+                <option value="diesel">Dízel</option>
+                <option value="electric">Elektromos</option>
+                <option value="hybrid">Hibrid</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label-custom">Váltó *</label>
+              <select v-model="newVehicle.transmission_type" class="form-input-custom">
+                <option value="manual">Manuális</option>
+                <option value="automatic">Automata</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label-custom">Átvétel helye *</label>
+              <input v-model="newVehicle.location_pickup" class="form-input-custom" type="text" placeholder="pl. Budapest" />
+            </div>
+            <div class="col-6">
+              <label class="form-label-custom">Visszahozás helye *</label>
+              <input v-model="newVehicle.location_return" class="form-input-custom" type="text" placeholder="pl. Budapest" />
+            </div>
+            <div class="col-12">
+              <label class="form-label-custom">Leírás</label>
+              <textarea v-model="newVehicle.description" class="form-input-custom" rows="3" placeholder="Opcionális leírás..."></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer-custom">
+          <button class="btn btn-outline-secondary rounded-pill px-4" @click="closeAddModal">Mégse</button>
+          <button class="btn btn-success rounded-pill px-4" @click="addVehicle" :disabled="addLoading">
+            <span v-if="addLoading" class="spinner-border spinner-border-sm me-2"></span>
+            Hozzáadás
           </button>
         </div>
       </div>
