@@ -28,7 +28,8 @@ export default {
       number_of_seats: 5,
       location_pickup: '',
       location_return: '',
-      description: ''
+      description: '',
+      imageUrls: ['', '', '', '', '']
     })
 
     const openAddModal = () => {
@@ -43,7 +44,8 @@ export default {
         number_of_seats: 5,
         location_pickup: '',
         location_return: '',
-        description: ''
+        description: '',
+        imageUrls: ['', '', '', '', '']
       }
       showAddModal.value = true
     }
@@ -53,9 +55,23 @@ export default {
     }
 
     const addVehicle = async () => {
+      // Legalább 1 kép kötelező
+      const validUrls = newVehicle.value.imageUrls.filter(u => u.trim() !== '')
+      if (validUrls.length === 0) {
+        alert('Legalább egy kép URL megadása kötelező!')
+        return
+      }
       addLoading.value = true
       try {
-        await axios.post('http://127.0.0.1:8000/api/vehicles', newVehicle.value, { headers: getHeaders() })
+        const res = await axios.post('http://127.0.0.1:8000/api/vehicles', newVehicle.value, { headers: getHeaders() })
+        const vehicleId = res.data.vehicle_id
+        // Képek mentése egyenként
+        for (const url of validUrls) {
+          await axios.post('http://127.0.0.1:8000/api/vehicle-images',
+              { vehicle_id: vehicleId, image_url: url },
+              { headers: getHeaders() }
+          )
+        }
         await fetchData()
         closeAddModal()
         alert('Jármű sikeresen hozzáadva! Az admin jóváhagyása után jelenik meg az oldalon.')
@@ -154,9 +170,48 @@ export default {
       }
     }
 
-    const openEdit = (v) => {
+    const openEdit = async (v) => {
       editingVehicle.value = { ...v }
+      // Képek betöltése
+      try {
+        const res = await axios.get('http://127.0.0.1:8000/api/vehicle-images', {
+          params: { vehicle_id: v.vehicle_id },
+          headers: getHeaders()
+        })
+        editingVehicle.value.existingImages = res.data
+      } catch {
+        editingVehicle.value.existingImages = []
+      }
+      editingVehicle.value.newImageUrl = ''
       showEditModal.value = true
+    }
+
+    const addImageToVehicle = async () => {
+      const url = editingVehicle.value.newImageUrl?.trim()
+      if (!url) return
+      if ((editingVehicle.value.existingImages?.length ?? 0) >= 5) {
+        alert('Maximum 5 kép adható meg egy járműhöz.')
+        return
+      }
+      try {
+        const res = await axios.post('http://127.0.0.1:8000/api/vehicle-images',
+            { vehicle_id: editingVehicle.value.vehicle_id, image_url: url },
+            { headers: getHeaders() }
+        )
+        editingVehicle.value.existingImages.push(res.data)
+        editingVehicle.value.newImageUrl = ''
+      } catch (err) {
+        alert(err.response?.data?.error ?? 'Hiba a kép hozzáadásakor.')
+      }
+    }
+
+    const removeImage = async (imageId) => {
+      try {
+        await axios.delete(`http://127.0.0.1:8000/api/vehicle-images/${imageId}`, { headers: getHeaders() })
+        editingVehicle.value.existingImages = editingVehicle.value.existingImages.filter(i => i.image_id !== imageId)
+      } catch (err) {
+        alert('Hiba a kép törlésekor.')
+      }
     }
 
     const closeEdit = () => {
@@ -242,7 +297,7 @@ export default {
       stats, vehicles, rentals, loading, activeTab,
       statusLabel, statusClass, formatFt,
       editingVehicle, showEditModal, saveLoading,
-      openEdit, closeEdit, saveVehicle, deleteVehicle,
+      openEdit, closeEdit, saveVehicle, deleteVehicle, addImageToVehicle, removeImage,
       approveRental, rejectRental,
       showAddModal, addLoading, newVehicle, openAddModal, closeAddModal, addVehicle
     }
@@ -524,6 +579,35 @@ export default {
               <label class="form-label-custom">Leírás</label>
               <textarea v-model="editingVehicle.description" class="form-input-custom" rows="3"></textarea>
             </div>
+            <div class="col-12">
+              <label class="form-label-custom">
+                Képek
+                <span class="text-muted fw-normal">({{ editingVehicle.existingImages?.length ?? 0 }}/5)</span>
+              </label>
+              <!-- Meglévő képek -->
+              <div v-if="editingVehicle.existingImages?.length" class="existing-images-grid mb-3">
+                <div v-for="img in editingVehicle.existingImages" :key="img.image_id" class="existing-image-item">
+                  <img :src="img.image_url" @error="$event.target.src='https://via.placeholder.com/80x60?text=Hiba'" />
+                  <button class="remove-img-btn" @click="removeImage(img.image_id)" title="Törlés">
+                    <i class="bi bi-x"></i>
+                  </button>
+                </div>
+              </div>
+              <div v-else class="text-muted small mb-2">Még nincs kép feltöltve.</div>
+              <!-- Új kép hozzáadása -->
+              <div v-if="(editingVehicle.existingImages?.length ?? 0) < 5" class="d-flex gap-2">
+                <input
+                    v-model="editingVehicle.newImageUrl"
+                    class="form-input-custom"
+                    type="url"
+                    placeholder="https://... új kép URL"
+                    @keyup.enter="addImageToVehicle"
+                />
+                <button class="btn btn-success rounded-pill px-3" @click="addImageToVehicle" style="white-space:nowrap">
+                  <i class="bi bi-plus-lg"></i> Hozzáad
+                </button>
+              </div>
+            </div>
           </div>
         </div>
         <div class="modal-footer-custom">
@@ -597,6 +681,21 @@ export default {
             <div class="col-12">
               <label class="form-label-custom">Leírás</label>
               <textarea v-model="newVehicle.description" class="form-input-custom" rows="3" placeholder="Opcionális leírás..."></textarea>
+            </div>
+            <div class="col-12">
+              <label class="form-label-custom">Képek (URL) <span class="text-danger">*</span> <span class="text-muted fw-normal">(min. 1, max. 5)</span></label>
+              <div v-for="(url, idx) in newVehicle.imageUrls" :key="idx" class="d-flex gap-2 mb-2">
+                <span class="image-index-badge">{{ idx + 1 }}</span>
+                <input
+                    v-model="newVehicle.imageUrls[idx]"
+                    class="form-input-custom"
+                    type="url"
+                    :placeholder="idx === 0 ? 'https://... (kötelező)' : 'https://... (opcionális)'"
+                />
+                <div v-if="newVehicle.imageUrls[idx]" class="image-preview-thumb">
+                  <img :src="newVehicle.imageUrls[idx]" @error="$event.target.style.display='none'" />
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -710,4 +809,71 @@ export default {
   border-color: #198754;
   box-shadow: 0 0 0 3px rgba(25,135,84,0.1);
 }
+
+/* Képfeltöltés stílusok */
+.image-index-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  background: #e6f4ea;
+  color: #198754;
+  font-weight: 700;
+  font-size: 13px;
+  border-radius: 50%;
+  margin-top: 6px;
+}
+.image-preview-thumb {
+  width: 46px;
+  min-width: 46px;
+  height: 38px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #dee2e6;
+  margin-top: 3px;
+}
+.image-preview-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.existing-images-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.existing-image-item {
+  position: relative;
+  width: 80px;
+  height: 60px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #dee2e6;
+}
+.existing-image-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.remove-img-btn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 20px;
+  height: 20px;
+  background: rgba(220,53,69,0.85);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+.remove-img-btn:hover { background: #dc3545; }
 </style>

@@ -194,9 +194,9 @@ export default {
 
               <RouterLink
                   :to="`/vehicles/${vehicle.vehicle_id}`"
-                  class="btn btn-success w-100 mt-3 rounded-pill"
+                  class="home-car-btn w-100 mt-3"
               >
-                Megnézem
+                <i class="bi bi-arrow-right-circle me-2"></i>Megnézem
               </RouterLink>
             </div>
           </div>
@@ -351,4 +351,33 @@ section { padding: 3rem 0; }
   border-radius: 16px;
   box-shadow: 0 4px 20px rgba(0,0,0,0.08);
 }
+
+.home-car-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #198754;
+  color: white;
+  border: none;
+  border-radius: 50px;
+  padding: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.2s, transform 0.15s;
+}
+.home-car-btn:hover {
+  background: #198754;
+  color: white;
+  opacity: 0.9;
+  transform: scale(1.02);
+}
+
+/* ZÖLD SZÍN EGYSÉGESÍTÉS */
+.btn-success, .btn-success:hover, .btn-success:focus, .btn-success:active {
+  background-color: #198754 !important;
+  border-color: #198754 !important;
+}
+.btn-success:hover { opacity: 0.9 !important; }
+.text-success { color: #198754 !important; }
 </style>
