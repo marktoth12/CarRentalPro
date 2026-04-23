@@ -5,40 +5,165 @@ import axios from 'axios'
 export default {
   name: 'AdminDashboardView',
   setup() {
-    const stats = ref({
-      totalUsers: 3,
-      totalVehicles: 4,
-      totalRentals: 0,
-      pendingApprovals: 0
-    })
+    const stats = ref({ totalUsers: 0, totalVehicles: 0, totalRentals: 0, pendingApprovals: 0 })
     const vehicles = ref([])
     const users = ref([])
+    const rentals = ref([])
     const loading = ref(true)
     const activeTab = ref('overview')
 
-    onMounted(async () => {
+    const apiStatus = ref({ server: null, database: null, api: null })
+    const statusChecking = ref(false)
+
+    const checkApiStatus = async () => {
+      statusChecking.value = true
+      apiStatus.value = { server: null, database: null, api: null }
       try {
-        const vehiclesResponse = await axios.get('http://localhost:8000/api/vehicles')
-        vehicles.value = vehiclesResponse.data.data || vehiclesResponse.data
-        stats.value.totalVehicles = vehicles.value.length
-
-        const usersResponse = await axios.get('http://localhost:8000/api/users')
-        users.value = usersResponse.data.data || usersResponse.data
-        stats.value.totalUsers = users.value.length
-
-        loading.value = false
+        const start = Date.now()
+        const res = await axios.get('http://127.0.0.1:8000/api/vehicles', { timeout: 5000 })
+        const ms = Date.now() - start
+        // Szerver válaszolt és sikeres – DB is él
+        apiStatus.value = { server: true, database: true, api: ms }
       } catch (err) {
-        console.error(err)
-        loading.value = false
+        if (!err.response) {
+          // Hálózati hiba – szerver sem elérhető
+          apiStatus.value = { server: false, database: false, api: false }
+        } else if (err.response.status >= 500) {
+          // Szerver él, de belső hiba – valószínűleg DB nem elérhető
+          apiStatus.value = { server: true, database: false, api: false }
+        } else {
+          // 4xx – szerver és DB él, csak jogosultság/validáció hiba
+          const ms = err.response.headers['x-response-time']
+              ? parseInt(err.response.headers['x-response-time'])
+              : '–'
+          apiStatus.value = { server: true, database: true, api: ms }
+        }
+      } finally {
+        statusChecking.value = false
       }
+    }
+
+    const getHeaders = () => ({
+      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+      'Accept': 'application/json'
     })
 
+    const formatFt = (amount) => Number(amount).toLocaleString('hu-HU') + ' Ft'
+
+    const statusLabel = (s) => {
+      const map = {
+        pending_approval: 'Jóváhagyásra vár',
+        approved: 'Jóváhagyva',
+        rejected: 'Elutasítva',
+        in_progress: 'Folyamatban',
+        completed: 'Befejezett',
+        cancelled: 'Lemondva'
+      }
+      return map[s] ?? s
+    }
+
+    const statusClass = (s) => {
+      const map = {
+        pending_approval: 'bg-warning-soft',
+        approved: 'bg-primary-soft',
+        in_progress: 'bg-success-soft',
+        completed: 'bg-secondary-soft',
+        rejected: 'bg-danger-soft',
+        cancelled: 'bg-danger-soft'
+      }
+      return map[s] ?? 'bg-secondary-soft'
+    }
+
+    const roleLabel = (r) => {
+      const map = { admin: 'Admin', rentalagent: 'Bérbeadó', user: 'Felhasználó' }
+      return map[r] ?? r ?? 'Felhasználó'
+    }
+
+    const roleClass = (r) => {
+      const map = { admin: 'bg-danger-soft', rentalagent: 'bg-primary-soft', user: 'bg-success-soft' }
+      return map[r] ?? 'bg-secondary-soft'
+    }
+
+    const fetchData = async () => {
+      loading.value = true
+      try {
+        const [vehicleRes, userRes, rentalRes] = await Promise.all([
+          axios.get('http://127.0.0.1:8000/api/vehicles', {
+            params: { dashboard: 1 },
+            headers: getHeaders()
+          }),
+          axios.get('http://127.0.0.1:8000/api/users', { headers: getHeaders() }),
+          axios.get('http://127.0.0.1:8000/api/rentals', { headers: getHeaders() })
+        ])
+
+        vehicles.value = (Array.isArray(vehicleRes.data) ? vehicleRes.data : vehicleRes.data?.data ?? [])
+            .map(v => ({ ...v, is_approved: Boolean(Number(v.is_approved)), is_available: Boolean(Number(v.is_available)) }))
+
+        users.value = Array.isArray(userRes.data) ? userRes.data : userRes.data?.data ?? []
+
+        rentals.value = Array.isArray(rentalRes.data) ? rentalRes.data : rentalRes.data?.data ?? []
+
+        stats.value.totalVehicles = vehicles.value.length
+        stats.value.totalUsers = users.value.length
+        stats.value.totalRentals = rentals.value.length
+        stats.value.pendingApprovals = vehicles.value.filter(v => !v.is_approved).length
+
+      } catch (err) {
+        console.error('Admin fetch hiba:', err.response?.status, err.response?.data)
+      } finally {
+        loading.value = false
+      }
+    }
+
+    // --- Jármű műveletek ---
+    const approveVehicle = async (vehicleId) => {
+      if (!confirm('Biztosan jóváhagyod ezt a járművet?')) return
+      try {
+        await axios.put(`http://127.0.0.1:8000/api/vehicles/${vehicleId}`, { is_approved: 1 }, { headers: getHeaders() })
+        await fetchData()
+      } catch (err) {
+        alert(err.response?.data?.message ?? 'Hiba a jóváhagyás során.')
+      }
+    }
+
+    const rejectVehicle = async (vehicleId) => {
+      if (!confirm('Biztosan elutasítod ezt a járművet?')) return
+      try {
+        await axios.put(`http://127.0.0.1:8000/api/vehicles/${vehicleId}`, { is_approved: 0 }, { headers: getHeaders() })
+        await fetchData()
+      } catch (err) {
+        alert(err.response?.data?.message ?? 'Hiba az elutasítás során.')
+      }
+    }
+
+    const deleteVehicle = async (vehicleId) => {
+      if (!confirm('Biztosan törölni szeretnéd ezt a járművet?')) return
+      try {
+        await axios.delete(`http://127.0.0.1:8000/api/vehicles/${vehicleId}`, { headers: getHeaders() })
+        await fetchData()
+      } catch (err) {
+        alert(err.response?.data?.error ?? 'Törlési hiba történt.')
+      }
+    }
+
+    // --- Felhasználó műveletek ---
+    const deleteUser = async (userId) => {
+      if (!confirm('Biztosan törölni szeretnéd ezt a felhasználót?')) return
+      try {
+        await axios.delete(`http://127.0.0.1:8000/api/users/${userId}`, { headers: getHeaders() })
+        await fetchData()
+      } catch (err) {
+        alert(err.response?.data?.message ?? 'Törlési hiba történt.')
+      }
+    }
+
+    onMounted(fetchData)
+
     return {
-      stats,
-      vehicles,
-      users,
-      loading,
-      activeTab
+      stats, vehicles, users, rentals, loading, activeTab,
+      apiStatus, statusChecking, checkApiStatus,
+      formatFt, statusLabel, statusClass, roleLabel, roleClass,
+      approveVehicle, rejectVehicle, deleteVehicle, deleteUser
     }
   }
 }
@@ -56,11 +181,12 @@ export default {
             </h2>
           </div>
           <div class="col-md-6 text-md-end">
-            <p class="text-muted mb-0">Utolsó frissítés: <strong>2026. 04. 17.</strong></p>
+            <p class="text-muted mb-0">Utolsó frissítés: <strong>{{ new Date().toLocaleDateString('hu-HU') }}</strong></p>
           </div>
         </div>
       </header>
 
+      <!-- Stat kártyák -->
       <div class="row g-4 mb-5">
         <div class="col-md-3">
           <div class="custom-stat-card">
@@ -87,7 +213,7 @@ export default {
           <div class="custom-stat-card">
             <i class="bi bi-hourglass-split admin-icon"></i>
             <h3 class="fw-bold text-success mb-1">{{ stats.pendingApprovals }}</h3>
-            <p class="text-muted small text-uppercase mb-0">Függőben</p>
+            <p class="text-muted small text-uppercase mb-0">Jóváhagyásra vár</p>
           </div>
         </div>
       </div>
@@ -120,36 +246,60 @@ export default {
 
         <div class="admin-tabs-body p-4">
 
+          <!-- Áttekintés -->
           <div v-if="activeTab === 'overview'" class="fade-in">
             <h5 class="fw-bold text-success mb-4">Rendszer Áttekintése</h5>
             <div class="row g-4 mb-4">
               <div class="col-md-6">
                 <div class="admin-info-box h-100">
-                  <h6 class="text-success fw-bold mb-3">Adatbázis Státusz</h6>
-                  <p><strong>Szerver:</strong> <span class="badge bg-success-soft">Aktív</span></p>
-                  <p><strong>Adatbázis:</strong> <span class="badge bg-success-soft">Csatlakoztatva</span></p>
-                  <p class="mb-0"><strong>API:</strong> <span class="badge bg-success-soft">Működik</span></p>
+                  <h6 class="text-success fw-bold mb-3">
+                    Adatbázis Státusz
+                    <button class="btn btn-sm btn-outline-success ms-2 rounded-pill px-3" @click="checkApiStatus" :disabled="statusChecking">
+                      <span v-if="statusChecking" class="spinner-border spinner-border-sm me-1"></span>
+                      <i v-else class="bi bi-arrow-clockwise me-1"></i>
+                      Ellenőrzés
+                    </button>
+                  </h6>
+                  <p>
+                    <strong>Szerver:</strong>
+                    <span v-if="apiStatus.server === null" class="badge bg-secondary-soft">Ismeretlen</span>
+                    <span v-else-if="apiStatus.server === true" class="badge bg-success-soft">Aktív</span>
+                    <span v-else class="badge bg-danger-soft">Nem elérhető</span>
+                  </p>
+                  <p>
+                    <strong>Adatbázis:</strong>
+                    <span v-if="apiStatus.database === null" class="badge bg-secondary-soft">Ismeretlen</span>
+                    <span v-else-if="apiStatus.database === true" class="badge bg-success-soft">Csatlakoztatva</span>
+                    <span v-else class="badge bg-danger-soft">Nem elérhető</span>
+                  </p>
+                  <p class="mb-0">
+                    <strong>API válaszidő:</strong>
+                    <span v-if="apiStatus.api === null" class="badge bg-secondary-soft">Ismeretlen</span>
+                    <span v-else-if="apiStatus.api === false" class="badge bg-danger-soft">Nem elérhető</span>
+                    <span v-else class="badge bg-success-soft">{{ apiStatus.api }} ms</span>
+                  </p>
                 </div>
               </div>
               <div class="col-md-6">
                 <div class="admin-info-box h-100">
-                  <h6 class="text-success fw-bold mb-3">Rendszer Információ</h6>
-                  <p><strong>Verzió:</strong> 1.0.0</p>
-                  <p><strong>Utolsó Frissítés:</strong> 2026. 04. 17.</p>
-                  <p class="mb-0"><strong>Környezet:</strong> Produkciós</p>
+                  <h6 class="text-success fw-bold mb-3">Gyors Összefoglaló</h6>
+                  <p><strong>Összes felhasználó:</strong> {{ stats.totalUsers }} fő</p>
+                  <p><strong>Összes jármű:</strong> {{ stats.totalVehicles }} db</p>
+                  <p><strong>Jóváhagyásra váró járművek:</strong> {{ stats.pendingApprovals }} db</p>
+                  <p class="mb-0"><strong>Összes bérlés:</strong> {{ stats.totalRentals }} db</p>
                 </div>
               </div>
             </div>
-            <h6 class="fw-bold mb-3">Gyors Műveletek</h6>
-            <div class="d-flex gap-2">
-              <button class="btn btn-success rounded-pill px-4"><i class="bi bi-plus-circle me-2"></i>Új jármű</button>
-              <button class="btn btn-outline-secondary rounded-pill px-4"><i class="bi bi-database me-2"></i>Mentés</button>
-            </div>
           </div>
 
+          <!-- Járművek -->
           <div v-if="activeTab === 'vehicles'" class="fade-in">
             <h5 class="fw-bold text-success mb-4">Járművek Kezelése</h5>
             <div v-if="loading" class="text-center py-5"><div class="spinner-border text-success"></div></div>
+            <div v-else-if="vehicles.length === 0" class="text-center py-5 border rounded-3 bg-light">
+              <i class="bi bi-car-front fs-1 text-muted mb-3 d-block"></i>
+              <p class="text-muted">Nincsenek járművek a rendszerben.</p>
+            </div>
             <div v-else class="table-responsive">
               <table class="table admin-table mb-0">
                 <thead>
@@ -164,22 +314,40 @@ export default {
                 </thead>
                 <tbody>
                 <tr v-for="vehicle in vehicles" :key="vehicle.vehicle_id">
-                  <td class="fw-bold">{{ vehicle.make }} {{ vehicle.model }}</td>
+                  <td class="fw-bold">{{ vehicle.brand }} {{ vehicle.model }}</td>
                   <td><span class="badge bg-light text-dark border">{{ vehicle.license_plate }}</span></td>
-                  <td class="text-success fw-bold">€{{ vehicle.daily_rate }}</td>
+                  <td class="text-success fw-bold">{{ formatFt(vehicle.daily_rate) }}</td>
                   <td>
-                      <span :class="['badge', vehicle.is_available ? 'bg-success-soft' : 'bg-danger-soft']">
-                        {{ vehicle.is_available ? 'Elérhető' : 'Foglalt' }}
-                      </span>
+                    <span :class="['badge', vehicle.is_available ? 'bg-success-soft' : 'bg-danger-soft']">
+                      {{ vehicle.is_available ? 'Szabad' : 'Foglalt' }}
+                    </span>
                   </td>
                   <td>
-                      <span :class="['badge', vehicle.is_approved ? 'bg-primary-soft' : 'bg-warning-soft']">
-                        {{ vehicle.is_approved ? 'Igen' : 'Függőben' }}
-                      </span>
+                    <span :class="['badge', vehicle.is_approved ? 'bg-primary-soft' : 'bg-warning-soft']">
+                      {{ vehicle.is_approved ? 'Igen' : 'Függőben' }}
+                    </span>
                   </td>
                   <td class="text-end">
-                    <button class="btn btn-sm btn-icon-only me-1"><i class="bi bi-pencil-square text-success"></i></button>
-                    <button class="btn btn-sm btn-icon-only"><i class="bi bi-trash text-danger"></i></button>
+                    <button
+                        v-if="!vehicle.is_approved"
+                        class="btn btn-sm btn-icon-only me-1"
+                        title="Jóváhagyás"
+                        @click="approveVehicle(vehicle.vehicle_id)">
+                      <i class="bi bi-check-circle-fill text-success fs-5"></i>
+                    </button>
+                    <button
+                        v-if="vehicle.is_approved"
+                        class="btn btn-sm btn-icon-only me-1"
+                        title="Jóváhagyás visszavonása"
+                        @click="rejectVehicle(vehicle.vehicle_id)">
+                      <i class="bi bi-x-circle-fill text-warning fs-5"></i>
+                    </button>
+                    <button
+                        class="btn btn-sm btn-icon-only"
+                        title="Törlés"
+                        @click="deleteVehicle(vehicle.vehicle_id)">
+                      <i class="bi bi-trash text-danger"></i>
+                    </button>
                   </td>
                 </tr>
                 </tbody>
@@ -187,9 +355,15 @@ export default {
             </div>
           </div>
 
+          <!-- Felhasználók -->
           <div v-if="activeTab === 'users'" class="fade-in">
             <h5 class="fw-bold text-success mb-4">Felhasználók Listája</h5>
-            <div class="table-responsive">
+            <div v-if="loading" class="text-center py-5"><div class="spinner-border text-success"></div></div>
+            <div v-else-if="users.length === 0" class="text-center py-5 border rounded-3 bg-light">
+              <i class="bi bi-people fs-1 text-muted mb-3 d-block"></i>
+              <p class="text-muted">Nincsenek felhasználók a rendszerben.</p>
+            </div>
+            <div v-else class="table-responsive">
               <table class="table admin-table mb-0">
                 <thead>
                 <tr>
@@ -201,13 +375,22 @@ export default {
                 </tr>
                 </thead>
                 <tbody>
-                <tr v-for="user in users" :key="user.id">
-                  <td class="fw-bold">{{ user.name }}</td>
+                <tr v-for="user in users" :key="user.user_id">
+                  <td class="fw-bold">{{ user.first_name }} {{ user.last_name }}</td>
                   <td>{{ user.email }}</td>
-                  <td><span class="badge bg-danger-soft">{{ user.role || 'User' }}</span></td>
-                  <td><span class="badge bg-success-soft">{{ user.is_active ? 'Aktív' : 'Inaktív' }}</span></td>
+                  <td><span :class="['badge', roleClass(user.role)]">{{ roleLabel(user.role) }}</span></td>
+                  <td>
+                    <span :class="['badge', user.user_status === 'active' ? 'bg-success-soft' : 'bg-danger-soft']">
+                      {{ user.user_status === 'active' ? 'Aktív' : user.user_status === 'suspended' ? 'Felfüggesztett' : 'Inaktív' }}
+                    </span>
+                  </td>
                   <td class="text-end">
-                    <button class="btn btn-sm btn-icon-only"><i class="bi bi-pencil-square text-success"></i></button>
+                    <button
+                        class="btn btn-sm btn-icon-only"
+                        title="Törlés"
+                        @click="deleteUser(user.user_id)">
+                      <i class="bi bi-trash text-danger"></i>
+                    </button>
                   </td>
                 </tr>
                 </tbody>
@@ -215,11 +398,45 @@ export default {
             </div>
           </div>
 
+          <!-- Bérlések -->
           <div v-if="activeTab === 'rentals'" class="fade-in">
             <h5 class="fw-bold text-success mb-4">Bérlések Kezelése</h5>
-            <div class="text-center py-5 text-muted border rounded-3 bg-light">
-              <i class="bi bi-calendar2-x fs-2 d-block mb-2"></i>
-              <p>Jelenleg nincsenek aktív bérlések a rendszerben.</p>
+            <div v-if="loading" class="text-center py-5"><div class="spinner-border text-success"></div></div>
+            <div v-else-if="rentals.length === 0" class="text-center py-5 border rounded-3 bg-light">
+              <i class="bi bi-calendar2-x fs-1 text-muted mb-3 d-block"></i>
+              <p class="text-muted">Nincsenek bérlések a rendszerben.</p>
+            </div>
+            <div v-else class="table-responsive">
+              <table class="table admin-table mb-0">
+                <thead>
+                <tr>
+                  <th>Bérlő</th>
+                  <th>Jármű</th>
+                  <th>Kezdés</th>
+                  <th>Befejezés</th>
+                  <th>Összeg</th>
+                  <th>Státusz</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr v-for="r in rentals" :key="r.rental_id">
+                  <td class="fw-bold">{{ r.user ? `${r.user.first_name} ${r.user.last_name}` : '–' }}</td>
+                  <td>{{ r.vehicle ? `${r.vehicle.brand} ${r.vehicle.model}` : '–' }}</td>
+                  <td>{{ r.start_date?.slice(0, 10) }}</td>
+                  <td>{{ r.end_date?.slice(0, 10) }}</td>
+                  <td class="text-success fw-bold">{{ formatFt(r.total_price) }}</td>
+                  <td>
+                    <span v-if="r.rental_status === 'approved' && new Date(r.start_date) <= new Date() && new Date(r.end_date) >= new Date()"
+                          class="badge bg-success-soft">Folyamatban</span>
+                    <span v-else-if="r.rental_status === 'approved' && new Date(r.end_date) < new Date()"
+                          class="badge bg-secondary-soft">Befejezett</span>
+                    <span v-else :class="['badge', statusClass(r.rental_status)]">
+                      {{ statusLabel(r.rental_status) }}
+                    </span>
+                  </td>
+                </tr>
+                </tbody>
+              </table>
             </div>
           </div>
 
@@ -230,96 +447,22 @@ export default {
 </template>
 
 <style scoped>
-.admin-dashboard-wrapper {
-  background-color: #f8f9fa;
-  min-height: 100vh;
-}
-
-.custom-stat-card {
-  background: white;
-  border-radius: 20px;
-  padding: 1.5rem;
-  text-align: center;
-  box-shadow: 0 5px 20px rgba(0,0,0,0.05);
-  border: none;
-  height: 100%;
-}
-
-.admin-icon {
-  font-size: 2rem;
-  color: #198754;
-  margin-bottom: 0.5rem;
-  display: block;
-}
-
-.admin-main-card {
-  background: white;
-  border-radius: 20px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.05);
-  overflow: hidden;
-}
-
-.admin-tabs-header {
-  background: #fdfdfd;
-  padding: 1.25rem;
-  border-bottom: 1px solid #eee;
-}
-
-.nav-pills .nav-link {
-  color: #6c757d;
-  font-weight: 500;
-  border-radius: 12px;
-  padding: 0.6rem 1.2rem;
-  transition: 0.3s;
-}
-
-.nav-pills .nav-link.active {
-  background-color: #198754;
-  color: white;
-}
-
-.admin-table thead th {
-  background-color: #f8f9fa;
-  color: #198754;
-  padding: 1rem;
-  border: none;
-}
-
-.admin-table tbody td {
-  padding: 1rem;
-  vertical-align: middle;
-  border-bottom: 1px solid #f8f9fa;
-}
-
+.admin-dashboard-wrapper { background-color: #f8f9fa; min-height: 100vh; }
+.custom-stat-card { background: white; border-radius: 20px; padding: 1.5rem; text-align: center; box-shadow: 0 5px 20px rgba(0,0,0,0.05); border: none; height: 100%; }
+.admin-icon { font-size: 2rem; color: #198754; margin-bottom: 0.5rem; display: block; }
+.admin-main-card { background: white; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); overflow: hidden; }
+.admin-tabs-header { background: #fdfdfd; padding: 1.25rem; border-bottom: 1px solid #eee; }
+.nav-pills .nav-link { color: #6c757d; font-weight: 500; border-radius: 12px; padding: 0.6rem 1.2rem; transition: 0.3s; border: none; background: none; }
+.nav-pills .nav-link.active { background-color: #198754; color: white; }
+.admin-table thead th { background-color: #f8f9fa; color: #198754; padding: 1rem; border: none; }
+.admin-table tbody td { padding: 1rem; vertical-align: middle; border-bottom: 1px solid #f8f9fa; }
 .bg-success-soft { background-color: #e6f4ea; color: #198754; }
 .bg-danger-soft { background-color: #fce8e6; color: #d93025; }
 .bg-primary-soft { background-color: #e7f1ff; color: #0d6efd; }
 .bg-warning-soft { background-color: #fff4e5; color: #ff9800; }
-
-.admin-info-box {
-  background: #f8f9fa;
-  padding: 1.5rem;
-  border-radius: 15px;
-  border-left: 5px solid #198754;
-}
-
-.btn-icon-only {
-  background: #f8f9fa;
-  border-radius: 8px;
-  width: 35px;
-  height: 35px;
-  border: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.fade-in {
-  animation: fadeIn 0.3s ease-in;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(5px); }
-  to { opacity: 1; transform: translateY(0); }
-}
+.bg-secondary-soft { background-color: #f0f0f0; color: #6c757d; }
+.admin-info-box { background: #f8f9fa; padding: 1.5rem; border-radius: 15px; border-left: 5px solid #198754; }
+.btn-icon-only { background: #f8f9fa; border-radius: 8px; width: 35px; height: 35px; border: none; display: inline-flex; align-items: center; justify-content: center; }
+.fade-in { animation: fadeIn 0.3s ease-in; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 </style>
