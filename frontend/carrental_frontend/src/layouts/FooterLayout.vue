@@ -3,6 +3,8 @@ import { RouterLink } from 'vue-router'
 
 export default {
   name: "FooterLayout",
+
+  // Globális komponensek regisztrálása ezen a komponensen belül
   components: {
     RouterLink
   }
@@ -15,6 +17,7 @@ export default {
 
       <div class="row g-4">
 
+        <!-- Céginformációk oszlop -->
         <div class="col-md-4">
           <h5 class="title">
             <i class="bi bi-car-front-fill me-2"></i>CarRental Pro
@@ -24,6 +27,7 @@ export default {
           </p>
         </div>
 
+        <!-- Gyors navigáció -->
         <div class="col-md-2">
           <h6 class="heading">Menü</h6>
           <ul class="list">
@@ -34,6 +38,7 @@ export default {
           </ul>
         </div>
 
+        <!-- Jogi információk -->
         <div class="col-md-3">
           <h6 class="heading">Információ</h6>
           <ul class="list">
@@ -43,6 +48,7 @@ export default {
           </ul>
         </div>
 
+        <!-- Elérhetőség -->
         <div class="col-md-3">
           <h6 class="heading">Elérhetőség</h6>
           <ul class="list">
@@ -65,6 +71,7 @@ export default {
 </template>
 
 <style scoped>
+
 .footer-glass {
   background: rgba(255, 255, 255, 0.75);
   backdrop-filter: blur(12px);
@@ -103,7 +110,7 @@ export default {
 .link {
   color: #374151;
   text-decoration: none;
-  transition: 0.2s;
+  transition: color 0.2s ease;
 }
 
 .link:hover {

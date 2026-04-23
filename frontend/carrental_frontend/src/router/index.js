@@ -1,6 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/public/HomeView.vue'
-// Fix import az ügynök dashboardhoz, hogy kizárjuk az elérési út hibákat
 import AgentDashboardView from '../views/app/agent/AgentDashboardView.vue'
 
 const routes = [

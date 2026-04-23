@@ -6,11 +6,17 @@ import { onMounted, ref } from 'vue'
 export default {
   name: "NavbarLayout",
   components: { RouterLink },
+
   setup() {
     const router = useRouter()
+
+    // Auth composable-ból származó reaktív állapot és metódusok
     const { isAuthenticated, user, logout, checkAuth } = useAuth()
+
+    // Dropdown állapot kezelése
     const isDropdownOpen = ref(false)
 
+    // Oldal betöltésekor ellenőrizzük a bejelentkezést
     onMounted(() => {
       checkAuth()
     })
@@ -26,7 +32,7 @@ export default {
     const handleLogout = () => {
       logout()
       closeDropdown()
-      router.push('/')
+      router.push('/')           // Kijelentkezés után visszanavigálunk a főoldalra
     }
 
     return {
@@ -44,11 +50,14 @@ export default {
 <template>
   <nav class="navbar navbar-expand-lg navbar-custom">
     <div class="container">
+
+      <!-- Márkanév, logo -->
       <RouterLink class="navbar-brand d-flex align-items-center" to="/" @click="closeDropdown">
         <i class="bi bi-car-front-fill me-2"></i>
         <span class="brand-text">CarRental Pro</span>
       </RouterLink>
 
+      <!-- Mobil menü gomb -->
       <button
           class="navbar-toggler"
           type="button"
@@ -58,8 +67,11 @@ export default {
         <span class="navbar-toggler-icon"></span>
       </button>
 
+      <!-- Menü elemek -->
       <div class="collapse navbar-collapse" id="navbarNav">
         <ul class="navbar-nav ms-auto align-items-lg-center">
+
+          <!-- Navigációs linkek -->
           <li class="nav-item">
             <RouterLink class="nav-link" to="/" @click="closeDropdown">Kezdőlap</RouterLink>
           </li>
@@ -73,12 +85,14 @@ export default {
             <RouterLink class="nav-link" to="/contact" @click="closeDropdown">Kapcsolat</RouterLink>
           </li>
 
+          <!-- Bejelentkezés gomb (ha nincs bejelentkezve) -->
           <li class="nav-item ms-lg-2" v-if="!isAuthenticated">
             <RouterLink class="login-btn" to="/auth/login" @click="closeDropdown">
               Bejelentkezés
             </RouterLink>
           </li>
 
+          <!-- Felhasználói dropdown (ha be van jelentkezve) -->
           <li class="nav-item dropdown ms-lg-2" v-else>
             <a
                 class="nav-link dropdown-toggle user-pill mt-2 mt-lg-0"
@@ -89,6 +103,8 @@ export default {
               <i class="bi bi-person-circle me-1"></i>
               {{ user?.email?.split('@')[0] || 'Fiók' }}
             </a>
+
+            <!-- Dropdown menü -->
             <ul
                 class="dropdown-menu dropdown-menu-end shadow border-0 rounded-4 p-2"
                 :class="{ 'show': isDropdownOpen }"
@@ -98,12 +114,14 @@ export default {
                 {{ user?.email || 'Felhasználó' }}
               </li>
               <li><hr class="dropdown-divider"></li>
+
+              <!-- Role alapú menüpontok -->
               <li v-if="user?.role === 'rentalagent'">
                 <RouterLink class="dropdown-item" to="/agent" @click="closeDropdown">
                   Bérbeadó felület
                 </RouterLink>
               </li>
-              <li v-if="user?.role === 'rentalagent'">
+              <li v-if="user?.role === 'rentalagent' || user?.role === 'user'">
                 <RouterLink class="dropdown-item" to="/my-rentals" @click="closeDropdown">
                   Saját bérlések
                 </RouterLink>
@@ -113,12 +131,10 @@ export default {
                   Admin felület
                 </RouterLink>
               </li>
-              <li v-if="user?.role === 'user'">
-                <RouterLink class="dropdown-item" to="/my-rentals" @click="closeDropdown">
-                  Saját bérlések
-                </RouterLink>
-              </li>
+
               <li><hr class="dropdown-divider"></li>
+
+              <!-- Kijelentkezés -->
               <li>
                 <button class="dropdown-item text-danger" @click="handleLogout">
                   Kijelentkezés
@@ -142,17 +158,21 @@ export default {
   z-index: 1050;
   padding: 0.7rem 0;
 }
+
 .navbar-brand {
   font-weight: 800;
   color: #198754 !important;
 }
+
 .nav-link {
   color: #444 !important;
   font-weight: 600;
   padding: 0.5rem 1rem !important;
-  transition: 0.3s;
+  transition: color 0.3s;
 }
-.nav-link:hover { color: #198754 !important; }
+.nav-link:hover {
+  color: #198754 !important;
+}
 
 .login-btn {
   display: inline-flex;
@@ -165,11 +185,10 @@ export default {
   padding: 8px 22px;
   border-radius: 50px;
   text-decoration: none;
-  transition: background 0.2s, transform 0.15s;
+  transition: all 0.2s;
 }
 .login-btn:hover {
   background: #198754;
-  color: white !important;
   opacity: 0.9;
   transform: scale(1.02);
 }
@@ -179,12 +198,18 @@ export default {
   border: 1px solid #d1fae5;
   border-radius: 999px;
   color: #198754 !important;
+  padding: 6px 16px;
 }
-.dropdown-menu.show { animation: fadeIn 0.2s ease-out; }
+
+.dropdown-menu.show {
+  animation: fadeIn 0.2s ease-out;
+}
+
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
+  to   { opacity: 1; transform: translateY(0); }
 }
+
 @media (max-width: 991.98px) {
   .navbar-collapse {
     background: white;
@@ -193,6 +218,5 @@ export default {
     margin-top: 1rem;
     box-shadow: 0 10px 25px rgba(0,0,0,0.1);
   }
-  .user-pill { border-radius: 10px; }
 }
 </style>
