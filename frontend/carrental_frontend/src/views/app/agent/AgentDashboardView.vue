@@ -5,7 +5,7 @@ import axios from 'axios'
 export default {
   name: 'AgentDashboardView',
   setup() {
-    const stats = ref({ totalVehicles: 0, activeRentals: 0, totalRevenue: 0, pendingRequests: 0 })
+    const stats = ref({ totalVehicles: 0, activeRentals: 0, totalRevenue: 0, pendingRequests: 0, paidRentalsCount: 0 })
     const vehicles = ref([])
     const rentals = ref([])
     const loading = ref(true)
@@ -175,7 +175,10 @@ export default {
         stats.value.activeRentals = rentals.value.filter(r =>
             ['pending_approval', 'approved', 'in_progress'].includes(r.rental_status)
         ).length
-        stats.value.totalRevenue = rentals.value.reduce((sum, r) => sum + Number(r.total_price || 0), 0)
+        // Csak jóváhagyott/befejezett bérlések bevétele
+        const paidRentals = rentals.value.filter(r => ['approved', 'in_progress', 'completed'].includes(r.rental_status))
+        stats.value.totalRevenue = paidRentals.reduce((sum, r) => sum + Number(r.total_price || 0), 0)
+        stats.value.paidRentalsCount = paidRentals.length
         stats.value.pendingRequests = vehicles.value.filter(v => !v.is_approved).length
 
       } catch (err) {
@@ -348,7 +351,7 @@ export default {
             </h2>
           </div>
           <div class="col-md-6 text-md-end">
-            <p class="text-muted mb-0">Utolsó frissítés: <strong>2026.04.23</strong></p>
+            <p class="text-muted mb-0">Utolsó frissítés: <strong>2026. 04. 21.</strong></p>
           </div>
         </div>
       </header>
@@ -391,12 +394,8 @@ export default {
               </button>
             </li>
             <li class="nav-item">
-              <button class="nav-link position-relative" :class="{ active: activeTab === 'rentals' }" @click="activeTab = 'rentals'">
+              <button class="nav-link" :class="{ active: activeTab === 'rentals' }" @click="activeTab = 'rentals'">
                 <i class="bi bi-calendar-event me-2"></i>Bérlések
-                <span v-if="rentals.filter(r => r.rental_status === 'pending_approval').length > 0"
-                      class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:10px;color:white">
-                  {{ rentals.filter(r => r.rental_status === 'pending_approval').length }}
-                </span>
               </button>
             </li>
             <li class="nav-item">
@@ -416,7 +415,7 @@ export default {
           <div v-if="activeTab === 'overview'" class="fade-in">
             <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
               <h5 class="fw-bold text-success mb-0">Üzleti Összefoglaló</h5>
-              <button class="add-vehicle-btn" @click="openAddModal">
+              <button class="btn btn-success rounded-pill px-4" @click="openAddModal">
                 <i class="bi bi-plus-circle me-2"></i>Új autó felvétele
               </button>
             </div>
@@ -491,8 +490,8 @@ export default {
                     <span class="fw-bold text-success">{{ formatFt(stats.totalRevenue) }}</span>
                   </div>
                   <div class="d-flex justify-content-between">
-                    <span class="text-muted small">Átlag bérlésenkénti</span>
-                    <span class="fw-bold">{{ stats.activeRentals > 0 ? formatFt(Math.round(stats.totalRevenue / stats.activeRentals)) : '0 Ft' }}</span>
+                    <span class="text-muted small">Átlag bérlésenkénti bevétel</span>
+                    <span class="fw-bold">{{ stats.paidRentalsCount > 0 ? formatFt(Math.round(stats.totalRevenue / stats.paidRentalsCount)) : '0 Ft' }}</span>
                   </div>
                 </div>
               </div>
@@ -907,10 +906,9 @@ export default {
   background: white;
   border-radius: 20px;
   width: 100%;
-  max-width: 620px;
-  max-height: 92vh;
-  display: flex;
-  flex-direction: column;
+  max-width: 560px;
+  max-height: 90vh;
+  overflow-y: auto;
   box-shadow: 0 20px 60px rgba(0,0,0,0.15);
 }
 .modal-header-custom {
@@ -932,7 +930,7 @@ export default {
   padding: 0 4px;
 }
 .btn-close-custom:hover { color: #212529; }
-.modal-body-custom { padding: 1.5rem; overflow-y: auto; flex: 1; }
+.modal-body-custom { padding: 1.5rem; }
 .modal-footer-custom {
   display: flex;
   justify-content: flex-end;
@@ -1076,14 +1074,4 @@ export default {
   background: #198754; color: white; font-weight: 600; cursor: pointer;
 }
 .confirm-btn-ok:hover { opacity: 0.9; }
-
-/* Új autó gomb */
-.add-vehicle-btn {
-  display: inline-flex; align-items: center;
-  background: #198754; color: white; border: none;
-  border-radius: 50px; padding: 10px 24px;
-  font-size: 14px; font-weight: 600; cursor: pointer;
-  transition: opacity 0.2s, transform 0.15s;
-}
-.add-vehicle-btn:hover { opacity: 0.9; transform: scale(1.02); }
 </style>
