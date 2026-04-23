@@ -10,7 +10,8 @@ export default {
       vehicles: [],
       searchStartDate: '',
       searchEndDate: '',
-      searchLocation: ''
+      searchLocation: '',
+      toast: { show: false, message: '', type: 'error' }
     }
   },
   async mounted() {
@@ -27,13 +28,17 @@ export default {
     }
   },
   methods: {
+    showToast(message, type = 'error') {
+      this.toast = { show: true, message, type }
+      setTimeout(() => this.toast.show = false, 3000)
+    },
     doSearch() {
       if (!this.searchStartDate || !this.searchEndDate) {
-        alert('Kérlek add meg a bérlés kezdetét és végét!')
+        this.showToast('Kérlek add meg a bérlés kezdetét és végét!')
         return
       }
       if (this.searchStartDate >= this.searchEndDate) {
-        alert('A befejezés dátuma nem lehet korábbi a kezdésnél!')
+        this.showToast('A befejezés dátuma nem lehet korábbi a kezdésnél!')
         return
       }
       this.$router.push({
@@ -235,6 +240,13 @@ export default {
     </div>
   </section>
 
+  <!-- Toast -->
+  <Transition name="toast">
+    <div v-if="toast.show" class="home-toast" :class="`toast-${toast.type}`">
+      <i class="bi bi-exclamation-circle-fill me-2"></i>{{ toast.message }}
+    </div>
+  </Transition>
+
 </template>
 
 <style scoped>
@@ -380,4 +392,17 @@ section { padding: 3rem 0; }
 }
 .btn-success:hover { opacity: 0.9 !important; }
 .text-success { color: #198754 !important; }
+
+.home-toast {
+  position: fixed; bottom: 2rem; right: 2rem;
+  padding: 14px 20px; border-radius: 14px;
+  font-size: 14px; font-weight: 600;
+  display: flex; align-items: center;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+  z-index: 9999;
+}
+.toast-error { background: #d93025; color: white; }
+.toast-success { background: #198754; color: white; }
+.toast-enter-active, .toast-leave-active { transition: all 0.3s ease; }
+.toast-enter-from, .toast-leave-to { opacity: 0; transform: translateY(20px); }
 </style>

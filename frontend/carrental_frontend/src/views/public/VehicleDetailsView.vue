@@ -65,10 +65,10 @@ export default {
     })
 
     const bookVehicle = async () => {
-      if (!startDate.value || !endDate.value) { alert('Kérlek válassz dátumot!'); return }
-      if (new Date(endDate.value) <= new Date(startDate.value)) { alert('A befejezés nem lehet korábbi a kezdésnél!'); return }
+      if (!startDate.value || !endDate.value) { showToast('Kérlek válassz dátumot!', 'error'); return }
+      if (new Date(endDate.value) <= new Date(startDate.value)) { showToast('A befejezés nem lehet korábbi a kezdésnél!', 'error'); return }
       const token = localStorage.getItem('token')
-      if (!token) { alert('A foglaláshoz be kell jelentkezned!'); router.push('/login'); return }
+      if (!token) { showToast('A foglaláshoz be kell jelentkezned!', 'error'); router.push('/auth/login'); return }
       bookingLoading.value = true
       try {
         await axios.post('http://localhost:8000/api/rentals', {
@@ -78,13 +78,19 @@ export default {
           pickup_location: vehicle.value.location_pickup,
           return_location: vehicle.value.location_return
         }, { headers: { Authorization: `Bearer ${token}` } })
-        alert('Sikeres foglalás! A bérbeadó hamarosan visszaigazol.')
-        router.push('/my-rentals')
+        showToast('Sikeres foglalás! A bérbeadó hamarosan visszaigazol.')
+        setTimeout(() => router.push('/my-rentals'), 1500)
       } catch (err) {
-        alert(err.response?.data?.message ?? 'Hiba a foglalás során.')
+        showToast(err.response?.data?.message ?? 'Hiba a foglalás során.', 'error')
       } finally {
         bookingLoading.value = false
       }
+    }
+
+    const toast = ref({ show: false, message: '', type: 'success' })
+    const showToast = (message, type = 'success') => {
+      toast.value = { show: true, message, type }
+      setTimeout(() => toast.value.show = false, 3000)
     }
 
     const msgText = ref('')
@@ -116,7 +122,7 @@ export default {
     return {
       vehicle, loading, error, startDate, endDate, bookingLoading,
       similarVehicles, activeImage, images, totalPrice, totalDays,
-      fuelLabel, fuelIcon, formatFt, bookVehicle,
+      toast, fuelLabel, fuelIcon, formatFt, bookVehicle,
       msgText, msgSending, msgSuccess, msgError, sendMessage
     }
   }
@@ -324,6 +330,15 @@ export default {
 
     </div>
   </div>
+
+  <!-- Toast értesítő -->
+  <Transition name="toast">
+    <div v-if="toast.show" class="vd-toast" :class="`toast-${toast.type}`">
+      <i :class="['bi', toast.type === 'success' ? 'bi-check-circle-fill' : 'bi-x-circle-fill']"></i>
+      {{ toast.message }}
+    </div>
+  </Transition>
+
 </template>
 
 <style scoped>
@@ -443,4 +458,18 @@ export default {
 }
 .similar-card:hover { transform: translateY(-4px); }
 .similar-img { width: 100%; height: 220px; object-fit: cover; }
+
+/* TOAST */
+.vd-toast {
+  position: fixed; bottom: 2rem; right: 2rem;
+  padding: 14px 20px; border-radius: 14px;
+  font-size: 14px; font-weight: 600;
+  display: flex; align-items: center; gap: 10px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+  z-index: 9999; max-width: 360px;
+}
+.toast-success { background: #198754; color: white; }
+.toast-error   { background: #d93025; color: white; }
+.toast-enter-active, .toast-leave-active { transition: all 0.3s ease; }
+.toast-enter-from, .toast-leave-to { opacity: 0; transform: translateY(20px); }
 </style>

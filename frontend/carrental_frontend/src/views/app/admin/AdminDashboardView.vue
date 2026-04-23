@@ -14,6 +14,27 @@ export default {
     const loading = ref(true)
     const activeTab = ref('overview')
 
+    const toast = ref({ show: false, message: '', type: 'success' })
+    const confirmDialog = ref({ show: false, message: '', onConfirm: null })
+
+    const showToast = (message, type = 'success') => {
+      toast.value = { show: true, message, type }
+      setTimeout(() => toast.value.show = false, 3000)
+    }
+
+    const showConfirm = (message, onConfirm) => {
+      confirmDialog.value = { show: true, message, onConfirm }
+    }
+
+    const handleConfirm = () => {
+      if (confirmDialog.value.onConfirm) confirmDialog.value.onConfirm()
+      confirmDialog.value.show = false
+    }
+
+    const handleCancel = () => {
+      confirmDialog.value.show = false
+    }
+
     const apiStatus = ref({ server: null, database: null, api: null })
     const statusChecking = ref(false)
 
@@ -127,23 +148,27 @@ export default {
 
     // --- Bérbeadói kérelem műveletek ---
     const approveApplication = async (id) => {
-      if (!confirm('Biztosan jóváhagyod ezt a bérbeadói kérelmet?')) return
-      try {
-        await axios.post(`http://127.0.0.1:8000/api/rentalagent-applications/${id}/approve`, {}, { headers: getHeaders() })
-        await fetchData()
-      } catch (err) {
-        alert(err.response?.data?.message ?? 'Hiba a jóváhagyás során.')
-      }
+      showConfirm('Biztosan jóváhagyod ezt a bérbeadói kérelmet?', async () => {
+        try {
+          await axios.post(`http://127.0.0.1:8000/api/rentalagent-applications/${id}/approve`, {}, { headers: getHeaders() })
+          await fetchData()
+          showToast('Bérbeadói kérelem jóváhagyva!')
+        } catch (err) {
+          showToast(err.response?.data?.message ?? 'Hiba a jóváhagyás során.', 'error')
+        }
+      })
     }
 
     const rejectApplication = async (id) => {
-      if (!confirm('Biztosan elutasítod ezt a bérbeadói kérelmet?')) return
-      try {
-        await axios.post(`http://127.0.0.1:8000/api/rentalagent-applications/${id}/reject`, {}, { headers: getHeaders() })
-        await fetchData()
-      } catch (err) {
-        alert(err.response?.data?.message ?? 'Hiba az elutasítás során.')
-      }
+      showConfirm('Biztosan elutasítod ezt a bérbeadói kérelmet?', async () => {
+        try {
+          await axios.post(`http://127.0.0.1:8000/api/rentalagent-applications/${id}/reject`, {}, { headers: getHeaders() })
+          await fetchData()
+          showToast('Bérbeadói kérelem elutasítva.', 'error')
+        } catch (err) {
+          showToast(err.response?.data?.message ?? 'Hiba az elutasítás során.', 'error')
+        }
+      })
     }
 
     // --- Üzenet műveletek ---
@@ -156,55 +181,65 @@ export default {
     }
 
     const deleteMessage = async (id) => {
-      if (!confirm('Biztosan törlöd ezt az üzenetet?')) return
-      try {
-        await axios.delete(`http://127.0.0.1:8000/api/contact-messages/${id}`, { headers: getHeaders() })
-        messages.value = messages.value.filter(m => m.id !== id)
-      } catch (err) {
-        alert('Hiba a törlés során.')
-      }
+      showConfirm('Biztosan törlöd ezt az üzenetet?', async () => {
+        try {
+          await axios.delete(`http://127.0.0.1:8000/api/contact-messages/${id}`, { headers: getHeaders() })
+          messages.value = messages.value.filter(m => m.id !== id)
+          showToast('Üzenet törölve.')
+        } catch (err) {
+          showToast('Hiba a törlés során.', 'error')
+        }
+      })
     }
 
     // --- Jármű műveletek ---
     const approveVehicle = async (vehicleId) => {
-      if (!confirm('Biztosan jóváhagyod ezt a járművet?')) return
-      try {
-        await axios.put(`http://127.0.0.1:8000/api/vehicles/${vehicleId}`, { is_approved: 1 }, { headers: getHeaders() })
-        await fetchData()
-      } catch (err) {
-        alert(err.response?.data?.message ?? 'Hiba a jóváhagyás során.')
-      }
+      showConfirm('Biztosan jóváhagyod ezt a járművet?', async () => {
+        try {
+          await axios.put(`http://127.0.0.1:8000/api/vehicles/${vehicleId}`, { is_approved: 1 }, { headers: getHeaders() })
+          await fetchData()
+          showToast('Jármű jóváhagyva! Mostantól látható a főoldalon.')
+        } catch (err) {
+          showToast(err.response?.data?.message ?? 'Hiba a jóváhagyás során.', 'error')
+        }
+      })
     }
 
     const rejectVehicle = async (vehicleId) => {
-      if (!confirm('Biztosan elutasítod ezt a járművet?')) return
-      try {
-        await axios.put(`http://127.0.0.1:8000/api/vehicles/${vehicleId}`, { is_approved: 0 }, { headers: getHeaders() })
-        await fetchData()
-      } catch (err) {
-        alert(err.response?.data?.message ?? 'Hiba az elutasítás során.')
-      }
+      showConfirm('Biztosan visszavonod a jármű jóváhagyását?', async () => {
+        try {
+          await axios.put(`http://127.0.0.1:8000/api/vehicles/${vehicleId}`, { is_approved: 0 }, { headers: getHeaders() })
+          await fetchData()
+          showToast('Jármű jóváhagyása visszavonva.', 'warning')
+        } catch (err) {
+          showToast(err.response?.data?.message ?? 'Hiba az elutasítás során.', 'error')
+        }
+      })
     }
 
     const deleteVehicle = async (vehicleId) => {
-      if (!confirm('Biztosan törölni szeretnéd ezt a járművet?')) return
-      try {
-        await axios.delete(`http://127.0.0.1:8000/api/vehicles/${vehicleId}`, { headers: getHeaders() })
-        await fetchData()
-      } catch (err) {
-        alert(err.response?.data?.error ?? 'Törlési hiba történt.')
-      }
+      showConfirm('Biztosan törölni szeretnéd ezt a járművet?', async () => {
+        try {
+          await axios.delete(`http://127.0.0.1:8000/api/vehicles/${vehicleId}`, { headers: getHeaders() })
+          await fetchData()
+          showToast('Jármű törölve.')
+        } catch (err) {
+          showToast(err.response?.data?.error ?? 'Törlési hiba történt.', 'error')
+        }
+      })
     }
 
     // --- Felhasználó műveletek ---
     const deleteUser = async (userId) => {
-      if (!confirm('Biztosan törölni szeretnéd ezt a felhasználót?')) return
-      try {
-        await axios.delete(`http://127.0.0.1:8000/api/users/${userId}`, { headers: getHeaders() })
-        await fetchData()
-      } catch (err) {
-        alert(err.response?.data?.message ?? 'Törlési hiba történt.')
-      }
+      showConfirm('Biztosan törölni szeretnéd ezt a felhasználót?', async () => {
+        try {
+          await axios.delete(`http://127.0.0.1:8000/api/users/${userId}`, { headers: getHeaders() })
+          await fetchData()
+          showToast('Felhasználó törölve.')
+        } catch (err) {
+          showToast(err.response?.data?.message ?? 'Törlési hiba történt.', 'error')
+        }
+      })
     }
 
     onMounted(fetchData)
@@ -213,6 +248,7 @@ export default {
       stats, vehicles, users, rentals, applications, loading, activeTab,
       apiStatus, statusChecking, checkApiStatus,
       formatFt, statusLabel, statusClass, roleLabel, roleClass,
+      toast, confirmDialog, handleConfirm, handleCancel,
       approveApplication, rejectApplication,
       messages, markMessageRead, deleteMessage,
       approveVehicle, rejectVehicle, deleteVehicle, deleteUser
@@ -600,6 +636,29 @@ export default {
       </div>
     </div>
   </div>
+
+  <!-- Toast értesítő -->
+  <Transition name="toast">
+    <div v-if="toast.show" class="toast-notification" :class="`toast-${toast.type}`">
+      <i :class="['bi', toast.type === 'success' ? 'bi-check-circle-fill' : toast.type === 'error' ? 'bi-x-circle-fill' : 'bi-exclamation-circle-fill']"></i>
+      {{ toast.message }}
+    </div>
+  </Transition>
+
+  <!-- Confirm dialog -->
+  <div v-if="confirmDialog.show" class="confirm-overlay" @click.self="handleCancel">
+    <div class="confirm-box">
+      <div class="confirm-icon">
+        <i class="bi bi-question-circle-fill"></i>
+      </div>
+      <p class="confirm-message">{{ confirmDialog.message }}</p>
+      <div class="confirm-actions">
+        <button class="confirm-btn-cancel" @click="handleCancel">Mégse</button>
+        <button class="confirm-btn-ok" @click="handleConfirm">Igen, folytatom</button>
+      </div>
+    </div>
+  </div>
+
 </template>
 
 <style scoped>
@@ -629,4 +688,55 @@ export default {
 .msg-unread { border-left-color: #198754; background: #f8fffe; }
 .msg-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; flex-wrap: wrap; gap: 6px; }
 .msg-body { font-size: 14px; color: #444; margin: 0; white-space: pre-wrap; }
+
+/* TOAST */
+.toast-notification {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  padding: 14px 20px;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+  z-index: 9999;
+  max-width: 360px;
+}
+.toast-success { background: #198754; color: white; }
+.toast-error   { background: #d93025; color: white; }
+.toast-warning { background: #ff9800; color: white; }
+
+.toast-enter-active, .toast-leave-active { transition: all 0.3s ease; }
+.toast-enter-from, .toast-leave-to { opacity: 0; transform: translateY(20px); }
+
+/* CONFIRM DIALOG */
+.confirm-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 9998;
+}
+.confirm-box {
+  background: white; border-radius: 20px; padding: 2rem;
+  max-width: 380px; width: 90%; text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+}
+.confirm-icon i { font-size: 2.5rem; color: #ff9800; }
+.confirm-message { font-size: 15px; color: #333; margin: 1rem 0 1.5rem; font-weight: 500; }
+.confirm-actions { display: flex; gap: 10px; justify-content: center; }
+.confirm-btn-cancel {
+  padding: 10px 24px; border-radius: 50px; border: 1px solid #dee2e6;
+  background: white; color: #555; font-weight: 600; cursor: pointer;
+  transition: background 0.2s;
+}
+.confirm-btn-cancel:hover { background: #f5f5f5; }
+.confirm-btn-ok {
+  padding: 10px 24px; border-radius: 50px; border: none;
+  background: #198754; color: white; font-weight: 600; cursor: pointer;
+  transition: opacity 0.2s;
+}
+.confirm-btn-ok:hover { opacity: 0.9; }
 </style>

@@ -13,6 +13,27 @@ export default {
 
     const editingVehicle = ref(null)
     const agentMessages = ref([])
+
+    const toast = ref({ show: false, message: '', type: 'success' })
+    const confirmDialog = ref({ show: false, message: '', onConfirm: null })
+
+    const showToast = (message, type = 'success') => {
+      toast.value = { show: true, message, type }
+      setTimeout(() => toast.value.show = false, 3000)
+    }
+
+    const showConfirm = (message, onConfirm) => {
+      confirmDialog.value = { show: true, message, onConfirm }
+    }
+
+    const handleConfirm = () => {
+      if (confirmDialog.value.onConfirm) confirmDialog.value.onConfirm()
+      confirmDialog.value.show = false
+    }
+
+    const handleCancel = () => {
+      confirmDialog.value.show = false
+    }
     const showEditModal = ref(false)
     const saveLoading = ref(false)
 
@@ -59,14 +80,13 @@ export default {
       // Legalább 1 kép kötelező
       const validUrls = newVehicle.value.imageUrls.filter(u => u.trim() !== '')
       if (validUrls.length === 0) {
-        alert('Legalább egy kép URL megadása kötelező!')
+        showToast('Legalább egy kép URL megadása kötelező!', 'error')
         return
       }
       addLoading.value = true
       try {
         const res = await axios.post('http://127.0.0.1:8000/api/vehicles', newVehicle.value, { headers: getHeaders() })
         const vehicleId = res.data.vehicle_id
-        // Képek mentése egyenként
         for (const url of validUrls) {
           await axios.post('http://127.0.0.1:8000/api/vehicle-images',
               { vehicle_id: vehicleId, image_url: url },
@@ -75,13 +95,13 @@ export default {
         }
         await fetchData()
         closeAddModal()
-        alert('Jármű sikeresen hozzáadva! Az admin jóváhagyása után jelenik meg az oldalon.')
+        showToast('Jármű sikeresen hozzáadva! Az admin jóváhagyása után jelenik meg az oldalon.')
       } catch (err) {
         const errors = err.response?.data?.errors
         if (errors) {
-          alert(Object.values(errors).flat().join('\n'))
+          showToast(Object.values(errors).flat().join(' '), 'error')
         } else {
-          alert(err.response?.data?.message ?? 'Hiba történt a jármű hozzáadásakor.')
+          showToast(err.response?.data?.message ?? 'Hiba történt a jármű hozzáadásakor.', 'error')
         }
       } finally {
         addLoading.value = false
@@ -195,7 +215,7 @@ export default {
       const url = editingVehicle.value.newImageUrl?.trim()
       if (!url) return
       if ((editingVehicle.value.existingImages?.length ?? 0) >= 5) {
-        alert('Maximum 5 kép adható meg egy járműhöz.')
+        showToast('Maximum 5 kép adható meg egy járműhöz.', 'error')
         return
       }
       try {
@@ -206,7 +226,7 @@ export default {
         editingVehicle.value.existingImages.push(res.data)
         editingVehicle.value.newImageUrl = ''
       } catch (err) {
-        alert(err.response?.data?.error ?? 'Hiba a kép hozzáadásakor.')
+        showToast(err.response?.data?.error ?? 'Hiba a kép hozzáadásakor.', 'error')
       }
     }
 
@@ -215,7 +235,7 @@ export default {
         await axios.delete(`http://127.0.0.1:8000/api/vehicle-images/${imageId}`, { headers: getHeaders() })
         editingVehicle.value.existingImages = editingVehicle.value.existingImages.filter(i => i.image_id !== imageId)
       } catch (err) {
-        alert('Hiba a kép törlésekor.')
+        showToast('Hiba a kép törlésekor.', 'error')
       }
     }
 
@@ -248,52 +268,57 @@ export default {
         )
         await fetchData()
         closeEdit()
-        alert('A jármű adatai sikeresen mentve!')
+        showToast('A jármű adatai sikeresen mentve!')
       } catch (err) {
-        console.error('Mentési hiba:', err.response?.status, err.response?.data)
-        alert(err.response?.data?.message ?? 'Mentési hiba történt.')
+        showToast(err.response?.data?.message ?? 'Mentési hiba történt.', 'error')
       } finally {
         saveLoading.value = false
       }
     }
 
     const deleteVehicle = async (id) => {
-      if (!confirm('Biztosan törölni szeretnéd ezt a járművet?')) return
-      try {
-        await axios.delete(`http://127.0.0.1:8000/api/vehicles/${id}`, { headers: getHeaders() })
-        await fetchData()
-      } catch (err) {
-        alert(err.response?.data?.error ?? 'Törlési hiba történt.')
-      }
+      showConfirm('Biztosan törölni szeretnéd ezt a járművet?', async () => {
+        try {
+          await axios.delete(`http://127.0.0.1:8000/api/vehicles/${id}`, { headers: getHeaders() })
+          await fetchData()
+          showToast('Jármű törölve.')
+        } catch (err) {
+          showToast(err.response?.data?.error ?? 'Törlési hiba történt.', 'error')
+        }
+      })
     }
 
     // Bérlés jóváhagyása / elutasítása
     const approveRental = async (rentalId) => {
-      if (!confirm('Biztosan jóváhagyod ezt a bérlést?')) return
-      try {
-        await axios.put(
-            `http://127.0.0.1:8000/api/rentals/${rentalId}`,
-            { rental_status: 'approved' },
-            { headers: getHeaders() }
-        )
-        await fetchData()
-      } catch (err) {
-        alert(err.response?.data?.message ?? 'Hiba a jóváhagyás során')
-      }
+      showConfirm('Biztosan jóváhagyod ezt a bérlést?', async () => {
+        try {
+          await axios.put(
+              `http://127.0.0.1:8000/api/rentals/${rentalId}`,
+              { rental_status: 'approved' },
+              { headers: getHeaders() }
+          )
+          await fetchData()
+          showToast('Bérlés jóváhagyva!')
+        } catch (err) {
+          showToast(err.response?.data?.message ?? 'Hiba a jóváhagyás során', 'error')
+        }
+      })
     }
 
     const rejectRental = async (rentalId) => {
-      if (!confirm('Biztosan elutasítod ezt a bérlést?')) return
-      try {
-        await axios.put(
-            `http://127.0.0.1:8000/api/rentals/${rentalId}`,
-            { rental_status: 'rejected' },
-            { headers: getHeaders() }
-        )
-        await fetchData()
-      } catch (err) {
-        alert(err.response?.data?.message ?? 'Hiba az elutasítás során')
-      }
+      showConfirm('Biztosan elutasítod ezt a bérlést?', async () => {
+        try {
+          await axios.put(
+              `http://127.0.0.1:8000/api/rentals/${rentalId}`,
+              { rental_status: 'rejected' },
+              { headers: getHeaders() }
+          )
+          await fetchData()
+          showToast('Bérlés elutasítva.', 'error')
+        } catch (err) {
+          showToast(err.response?.data?.message ?? 'Hiba az elutasítás során', 'error')
+        }
+      })
     }
 
     const markAgentMsgRead = async (id) => {
@@ -305,13 +330,15 @@ export default {
     }
 
     const deleteAgentMsg = async (id) => {
-      if (!confirm('Biztosan törlöd ezt az üzenetet?')) return
-      try {
-        await axios.delete(`http://127.0.0.1:8000/api/vehicle-messages/${id}`, { headers: getHeaders() })
-        agentMessages.value = agentMessages.value.filter(m => m.id !== id)
-      } catch {
-        alert('Hiba a törlés során.')
-      }
+      showConfirm('Biztosan törlöd ezt az üzenetet?', async () => {
+        try {
+          await axios.delete(`http://127.0.0.1:8000/api/vehicle-messages/${id}`, { headers: getHeaders() })
+          agentMessages.value = agentMessages.value.filter(m => m.id !== id)
+          showToast('Üzenet törölve.')
+        } catch {
+          showToast('Hiba a törlés során.', 'error')
+        }
+      })
     }
 
     onMounted(fetchData)
@@ -320,6 +347,7 @@ export default {
       stats, vehicles, rentals, loading, activeTab,
       statusLabel, statusClass, formatFt,
       editingVehicle, showEditModal, saveLoading,
+      toast, confirmDialog, handleConfirm, handleCancel,
       openEdit, closeEdit, saveVehicle, deleteVehicle, addImageToVehicle, removeImage,
       approveRental, rejectRental,
       agentMessages, markAgentMsgRead, deleteAgentMsg,
@@ -773,6 +801,29 @@ export default {
     </div>
 
   </div>
+
+  <!-- Toast értesítő -->
+  <Transition name="toast">
+    <div v-if="toast.show" class="toast-notification" :class="`toast-${toast.type}`">
+      <i :class="['bi', toast.type === 'success' ? 'bi-check-circle-fill' : toast.type === 'error' ? 'bi-x-circle-fill' : 'bi-exclamation-circle-fill']"></i>
+      {{ toast.message }}
+    </div>
+  </Transition>
+
+  <!-- Confirm dialog -->
+  <div v-if="confirmDialog.show" class="confirm-overlay" @click.self="handleCancel">
+    <div class="confirm-box">
+      <div class="confirm-icon">
+        <i class="bi bi-question-circle-fill"></i>
+      </div>
+      <p class="confirm-message">{{ confirmDialog.message }}</p>
+      <div class="confirm-actions">
+        <button class="confirm-btn-cancel" @click="handleCancel">Mégse</button>
+        <button class="confirm-btn-ok" @click="handleConfirm">Igen, folytatom</button>
+      </div>
+    </div>
+  </div>
+
 </template>
 
 <style scoped>
@@ -947,4 +998,45 @@ export default {
   line-height: 1;
 }
 .remove-img-btn:hover { background: #dc3545; }
+
+/* TOAST */
+.toast-notification {
+  position: fixed; bottom: 2rem; right: 2rem;
+  padding: 14px 20px; border-radius: 14px;
+  font-size: 14px; font-weight: 600;
+  display: flex; align-items: center; gap: 10px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+  z-index: 9999; max-width: 360px;
+}
+.toast-success { background: #198754; color: white; }
+.toast-error   { background: #d93025; color: white; }
+.toast-warning { background: #ff9800; color: white; }
+.toast-enter-active, .toast-leave-active { transition: all 0.3s ease; }
+.toast-enter-from, .toast-leave-to { opacity: 0; transform: translateY(20px); }
+
+/* CONFIRM DIALOG */
+.confirm-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 9998;
+}
+.confirm-box {
+  background: white; border-radius: 20px; padding: 2rem;
+  max-width: 380px; width: 90%; text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+}
+.confirm-icon i { font-size: 2.5rem; color: #ff9800; }
+.confirm-message { font-size: 15px; color: #333; margin: 1rem 0 1.5rem; font-weight: 500; }
+.confirm-actions { display: flex; gap: 10px; justify-content: center; }
+.confirm-btn-cancel {
+  padding: 10px 24px; border-radius: 50px; border: 1px solid #dee2e6;
+  background: white; color: #555; font-weight: 600; cursor: pointer;
+}
+.confirm-btn-cancel:hover { background: #f5f5f5; }
+.confirm-btn-ok {
+  padding: 10px 24px; border-radius: 50px; border: none;
+  background: #198754; color: white; font-weight: 600; cursor: pointer;
+}
+.confirm-btn-ok:hover { opacity: 0.9; }
 </style>
