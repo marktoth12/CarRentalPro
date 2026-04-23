@@ -7,15 +7,20 @@ export default {
   name: "ContactView",
   components: { RouterLink },
   setup() {
+    // Form mezők és állapot
     const firstName = ref('')
     const lastName = ref('')
     const email = ref('')
     const message = ref('')
-    const agreed = ref(false)
+    const agreed = ref(false) // ÁSZF elfogadása kötelező
     const sending = ref(false)
     const success = ref(false)
     const error = ref(null)
 
+    /**
+     * Kapcsolati üzenet elküldése az API-ba
+     * Validálja a mezőket és az Adatvédelmi tajékoztató elfogadását
+     */
     const sendMessage = async () => {
       error.value = null
       if (!firstName.value || !lastName.value || !email.value || !message.value) {
@@ -23,7 +28,7 @@ export default {
         return
       }
       if (!agreed.value) {
-        error.value = 'Az adatvédelmi tájékoztató elfogadása kötelező!'
+        error.value = 'Az Adatvédelmi Tájékoztató elfogadása kötelező!'
         return
       }
       sending.value = true

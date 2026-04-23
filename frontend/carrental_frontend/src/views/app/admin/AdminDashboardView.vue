@@ -5,7 +5,7 @@ import axios from 'axios'
 export default {
   name: 'AdminDashboardView',
   setup() {
-    const stats = ref({ totalUsers: 0, totalVehicles: 0, totalRentals: 0, pendingApprovals: 0, pendingVehicles: 0 })
+    const stats = ref({ totalUsers: 0, totalVehicles: 0, totalRentals: 0, pendingApprovals: 0 })
     const vehicles = ref([])
     const users = ref([])
     const rentals = ref([])
@@ -14,23 +14,36 @@ export default {
     const loading = ref(true)
     const activeTab = ref('overview')
 
+    // Toast és confirm dialog
     const toast = ref({ show: false, message: '', type: 'success' })
     const confirmDialog = ref({ show: false, message: '', onConfirm: null })
 
+    /**
+     * Toast értesítő megjelenítése
+     * @param {string} message - Megjelenítendő szöveg
+     * @param {string} type - 'success' | 'error' | 'warning'
+     */
     const showToast = (message, type = 'success') => {
       toast.value = { show: true, message, type }
       setTimeout(() => toast.value.show = false, 3000)
     }
 
+    /**
+     * Megerősítő dialog megjelenítése
+     * @param {string} message - Kérdés szövege
+     * @param {Function} onConfirm - Visszahívás ha az "Igen" gombra kattintanak
+     */
     const showConfirm = (message, onConfirm) => {
       confirmDialog.value = { show: true, message, onConfirm }
     }
 
+    /** Confirm dialog: igen gomb */
     const handleConfirm = () => {
       if (confirmDialog.value.onConfirm) confirmDialog.value.onConfirm()
       confirmDialog.value.show = false
     }
 
+    /** Confirm dialog: mégse gomb */
     const handleCancel = () => {
       confirmDialog.value.show = false
     }
@@ -38,6 +51,10 @@ export default {
     const apiStatus = ref({ server: null, database: null, api: null })
     const statusChecking = ref(false)
 
+    /**
+     * Backend és adatbázis elérhetőségének ellenőrzése
+     * HTTP válasz alapján meghatározza a szerver és DB státuszát
+     */
     const checkApiStatus = async () => {
       statusChecking.value = true
       apiStatus.value = { server: null, database: null, api: null }
@@ -45,6 +62,7 @@ export default {
         const start = Date.now()
         const res = await axios.get('http://127.0.0.1:8000/api/vehicles', { timeout: 5000 })
         const ms = Date.now() - start
+        // Sikeres válasz: szerver és DB él
         apiStatus.value = { server: true, database: true, api: ms }
       } catch (err) {
         if (!err.response) {
@@ -60,13 +78,16 @@ export default {
       }
     }
 
+    /** Sanctum token alapú fejlécek generálása */
     const getHeaders = () => ({
       'Authorization': `Bearer ${localStorage.getItem('token')}`,
       'Accept': 'application/json'
     })
 
+    /** Szám formázása forint formátumba */
     const formatFt = (amount) => Number(amount).toLocaleString('hu-HU') + ' Ft'
 
+    /** Bérlési státusz kód*/
     const statusLabel = (s) => {
       const map = {
         pending_approval: 'Jóváhagyásra vár',
@@ -79,6 +100,7 @@ export default {
       return map[s] ?? s
     }
 
+    /** Bérlési státusz → badge CSS osztály */
     const statusClass = (s) => {
       const map = {
         pending_approval: 'bg-warning-soft',
@@ -91,16 +113,22 @@ export default {
       return map[s] ?? 'bg-secondary-soft'
     }
 
+    /** Szerepkör kód */
     const roleLabel = (r) => {
       const map = { admin: 'Admin', rentalagent: 'Bérbeadó', user: 'Felhasználó' }
       return map[r] ?? r ?? 'Felhasználó'
     }
 
+    /** Szerepkör → badge CSS osztály */
     const roleClass = (r) => {
       const map = { admin: 'bg-danger-soft', rentalagent: 'bg-primary-soft', user: 'bg-success-soft' }
       return map[r] ?? 'bg-secondary-soft'
     }
 
+    /**
+     * Összes adat lekérése az API-ból párhuzamosan
+     * Betölti: járművek, felhasználók, bérlések, kérelmek, üzenetek
+     */
     const fetchData = async () => {
       loading.value = true
       try {
@@ -110,23 +138,26 @@ export default {
           axios.get('http://127.0.0.1:8000/api/rentals', { headers: getHeaders() })
         ])
 
+        // is_approved és is_available boolean konverzió (DB-ben 0/1 értékek)
         vehicles.value = (Array.isArray(vehicleRes.data) ? vehicleRes.data : vehicleRes.data?.data ?? [])
             .map(v => ({ ...v, is_approved: Boolean(Number(v.is_approved)), is_available: Boolean(Number(v.is_available)) }))
 
         users.value = Array.isArray(userRes.data) ? userRes.data : userRes.data?.data ?? []
         rentals.value = Array.isArray(rentalRes.data) ? rentalRes.data : rentalRes.data?.data ?? []
 
+        // Bérbeadói kérelmek
         const appRes = await axios.get('http://127.0.0.1:8000/api/rentalagent-applications', { headers: getHeaders() })
         applications.value = Array.isArray(appRes.data) ? appRes.data : appRes.data?.data ?? []
 
+        // Kapcsolati üzenetek
         const msgRes = await axios.get('http://127.0.0.1:8000/api/contact-messages', { headers: getHeaders() })
         messages.value = Array.isArray(msgRes.data) ? msgRes.data : []
 
+        // Statisztikák frissítése
         stats.value.totalVehicles = vehicles.value.length
         stats.value.totalUsers = users.value.length
         stats.value.totalRentals = rentals.value.length
         stats.value.pendingApprovals = applications.value.filter(a => a.status === 'pending').length
-        stats.value.pendingVehicles = vehicles.value.filter(v => !v.is_approved).length
 
       } catch (err) {
         console.error('Admin fetch hiba:', err.response?.status, err.response?.data)
@@ -135,6 +166,7 @@ export default {
       }
     }
 
+    /** Bérbeadói kérelem jóváhagyása */
     const approveApplication = async (id) => {
       showConfirm('Biztosan jóváhagyod ezt a bérbeadói kérelmet?', async () => {
         try {
@@ -147,6 +179,7 @@ export default {
       })
     }
 
+    /** Bérbeadói kérelem elutasítása */
     const rejectApplication = async (id) => {
       showConfirm('Biztosan elutasítod ezt a bérbeadói kérelmet?', async () => {
         try {
@@ -159,6 +192,7 @@ export default {
       })
     }
 
+    /** Üzenet olvasottnak jelölése */
     const markMessageRead = async (id) => {
       try {
         await axios.patch(`http://127.0.0.1:8000/api/contact-messages/${id}/read`, {}, { headers: getHeaders() })
@@ -167,6 +201,7 @@ export default {
       } catch {}
     }
 
+    /** Üzenet törlése */
     const deleteMessage = async (id) => {
       showConfirm('Biztosan törlöd ezt az üzenetet?', async () => {
         try {
@@ -179,6 +214,7 @@ export default {
       })
     }
 
+    /** Jármű jóváhagyása (megjelenik a főoldalon) */
     const approveVehicle = async (vehicleId) => {
       showConfirm('Biztosan jóváhagyod ezt a járművet?', async () => {
         try {
@@ -191,6 +227,7 @@ export default {
       })
     }
 
+    /** Jármű jóváhagyásának visszavonása */
     const rejectVehicle = async (vehicleId) => {
       showConfirm('Biztosan visszavonod a jármű jóváhagyását?', async () => {
         try {
@@ -203,6 +240,7 @@ export default {
       })
     }
 
+    /** Jármű törlése (aktív bérlés esetén a backend megakadályozza) */
     const deleteVehicle = async (vehicleId) => {
       showConfirm('Biztosan törölni szeretnéd ezt a járművet?', async () => {
         try {
@@ -215,6 +253,7 @@ export default {
       })
     }
 
+    /** Felhasználó törlése */
     const deleteUser = async (userId) => {
       showConfirm('Biztosan törölni szeretnéd ezt a felhasználót?', async () => {
         try {
@@ -254,7 +293,7 @@ export default {
             </h2>
           </div>
           <div class="col-md-6 text-md-end">
-            <p class="text-muted mb-0">Utolsó frissítés: <strong>2026.04.23</strong></p>
+            <p class="text-muted mb-0">Utolsó frissítés: <strong>{{ new Date().toLocaleDateString('hu-HU') }}</strong></p>
           </div>
         </div>
       </header>
@@ -284,8 +323,8 @@ export default {
         <div class="col-md-3">
           <div class="custom-stat-card">
             <i class="bi bi-hourglass-split admin-icon"></i>
-            <h3 class="fw-bold text-success mb-1">{{ stats.pendingVehicles }}</h3>
-            <p class="text-muted small text-uppercase mb-0">Jóváhagyásra váró járművek</p>
+            <h3 class="fw-bold text-success mb-1">{{ stats.pendingApprovals }}</h3>
+            <p class="text-muted small text-uppercase mb-0">Jóváhagyásra vár</p>
           </div>
         </div>
       </div>
@@ -299,12 +338,8 @@ export default {
               </button>
             </li>
             <li class="nav-item">
-              <button class="nav-link position-relative" :class="{ active: activeTab === 'vehicles' }" @click="activeTab = 'vehicles'">
+              <button class="nav-link" :class="{ active: activeTab === 'vehicles' }" @click="activeTab = 'vehicles'">
                 <i class="bi bi-car-front me-2"></i>Járművek
-                <span v-if="vehicles.filter(v => !v.is_approved).length > 0"
-                      class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:10px">
-                  <span style="color:white">{{ vehicles.filter(v => !v.is_approved).length }}</span>
-                </span>
               </button>
             </li>
             <li class="nav-item">
@@ -319,7 +354,7 @@ export default {
             </li>
             <li class="nav-item">
               <button class="nav-link position-relative" :class="{ active: activeTab === 'applications' }" @click="activeTab = 'applications'">
-                <i class="bi bi-person-badge me-2"></i>Bérbeadó jelentkezések
+                <i class="bi bi-person-badge me-2"></i>Bérbeadói kérelmek
                 <span v-if="applications.filter(a => a.status === 'pending').length > 0"
                       class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:10px">
                   <span style="color:white">{{ applications.filter(a => a.status === 'pending').length }}</span>
@@ -380,7 +415,7 @@ export default {
                   <div class="ov-panel-title"><i class="bi bi-info-circle me-2"></i>Gyors Összefoglaló</div>
                   <p><strong>Összes felhasználó:</strong> {{ stats.totalUsers }} fő</p>
                   <p><strong>Összes jármű:</strong> {{ stats.totalVehicles }} db</p>
-                  <p><strong>Jóváhagyásra váró járművek:</strong> {{ stats.pendingVehicles }} db</p>
+                  <p><strong>Jóváhagyásra váró járművek:</strong> {{ stats.pendingApprovals }} db</p>
                   <p class="mb-0"><strong>Összes bérlés:</strong> {{ stats.totalRentals }} db</p>
                 </div>
               </div>

@@ -7,8 +7,10 @@ export default {
   name: 'RegisterView',
   components: { RouterLink },
   setup() {
+    // Router
     const router = useRouter()
 
+    // Form mezők
     const firstName = ref('')
     const lastName = ref('')
     const username = ref('')
@@ -17,11 +19,16 @@ export default {
     const drivingLicense = ref('')
     const password = ref('')
     const passwordConfirm = ref('')
-    const selectedRole = ref('user')
+    const selectedRole = ref('user') // 'user' vagy 'rentalagent'
     const loading = ref(false)
     const error = ref(null)
     const success = ref(null)
 
+    /**
+     * Regisztráció kezelése
+     * Validálja az adatokat (18 év, jelszó egyezés), majd elküldi az API-nak
+     * Ha bérbeadónak jelentkezik, automatikusan bérbeadói kérelmet is benyújt
+     */
     const handleRegister = async () => {
       error.value = null
 
@@ -41,7 +48,7 @@ export default {
         return
       }
 
-      // Életkor ellenőrzés – minimum 18 év
+      // Életkor ellenőrzés: minimum 18 év (hónap és nap pontossággal)
       const birth = new Date(dateOfBirth.value)
       const today = new Date()
       const age = today.getFullYear() - birth.getFullYear()
@@ -65,7 +72,7 @@ export default {
           password_confirmation: passwordConfirm.value
         })
 
-        // Ha bérbeadónak jelentkezett, küldjük be a kérelmet
+        // Ha bérbeadónak jelentkezett, küldjük a kérelmet
         if (selectedRole.value === 'rentalagent') {
           const token = res.data.token
           await axios.post('http://127.0.0.1:8000/api/rentalagent-applications', {}, {

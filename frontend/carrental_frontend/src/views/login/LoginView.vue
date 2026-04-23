@@ -8,15 +8,21 @@ export default {
   name: 'LoginView',
   components: { RouterLink },
   setup() {
+    // Router és auth composable
     const router = useRouter()
     const { login } = useAuth()
 
+    // Form mezők és állapot
     const email = ref('')
     const password = ref('')
     const loading = ref(false)
     const error = ref(null)
     const successMessage = ref(null)
 
+    /**
+     * Bejelentkezés kezelése
+     * Sikeres login után localStorage-ba menti az adatokat és átirányít
+     */
     const handleLogin = async () => {
       if (!email.value || !password.value) {
         error.value = 'Kérjük, töltsd ki az összes mezőt!'

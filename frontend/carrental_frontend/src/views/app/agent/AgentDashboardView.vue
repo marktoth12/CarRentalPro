@@ -5,6 +5,7 @@ import axios from 'axios'
 export default {
   name: 'AgentDashboardView',
   setup() {
+    // Statisztikák és listák
     const stats = ref({ totalVehicles: 0, activeRentals: 0, totalRevenue: 0, pendingRequests: 0, paidRentalsCount: 0 })
     const vehicles = ref([])
     const rentals = ref([])
@@ -14,27 +15,41 @@ export default {
     const editingVehicle = ref(null)
     const agentMessages = ref([])
 
+    // Toast és confirm dialog
     const toast = ref({ show: false, message: '', type: 'success' })
     const confirmDialog = ref({ show: false, message: '', onConfirm: null })
 
+    /**
+     * Toast értesítő megjelenítése
+     * @param {string} message - Megjelenítendő szöveg
+     * @param {string} type - 'success' | 'error' | 'warning'
+     */
     const showToast = (message, type = 'success') => {
       toast.value = { show: true, message, type }
       setTimeout(() => toast.value.show = false, 3000)
     }
 
+    /**
+     * Megerősítő dialog megjelenítése
+     * @param {string} message - Kérdés szövege
+     * @param {Function} onConfirm - Visszahívás az "Igen" gombra
+     */
     const showConfirm = (message, onConfirm) => {
       confirmDialog.value = { show: true, message, onConfirm }
     }
 
+    /** Confirm dialog: igen gomb */
     const handleConfirm = () => {
       if (confirmDialog.value.onConfirm) confirmDialog.value.onConfirm()
       confirmDialog.value.show = false
     }
 
+    /** Confirm dialog: mégse gomb */
     const handleCancel = () => {
       confirmDialog.value.show = false
     }
 
+    // Szerkesztő és hozzáadó modal állapotok
     const showEditModal = ref(false)
     const saveLoading = ref(false)
 
@@ -55,6 +70,7 @@ export default {
       imageUrls: ['', '', '', '', '']
     })
 
+    /** Új jármű modal megnyitása és form alaphelyzetbe állítása */
     const openAddModal = () => {
       newVehicle.value = {
         brand: '',
@@ -73,10 +89,12 @@ export default {
       showAddModal.value = true
     }
 
+    /** Új jármű modal bezárása */
     const closeAddModal = () => {
       showAddModal.value = false
     }
 
+    /** Új jármű mentése, képek egyenkénti feltöltése */
     const addVehicle = async () => {
       const validUrls = newVehicle.value.imageUrls.filter(u => u.trim() !== '')
       if (validUrls.length === 0) {
@@ -108,8 +126,10 @@ export default {
       }
     }
 
+    /** Szám formázása forint formátumba */
     const formatFt = (amount) => Number(amount).toLocaleString('hu-HU') + ' Ft'
 
+    /** Bérlési státusz kód */
     const statusLabel = (s) => {
       const map = {
         pending_approval: 'Jóváhagyásra vár',
@@ -122,6 +142,7 @@ export default {
       return map[s] ?? s
     }
 
+    /** Bérlési státusz → badge CSS osztály */
     const statusClass = (s) => {
       const map = {
         pending_approval: 'bg-warning-soft',
@@ -134,11 +155,16 @@ export default {
       return map[s] ?? 'bg-secondary-soft'
     }
 
+    /** Sanctum token alapú fejlécek generálása */
     const getHeaders = () => ({
       'Authorization': `Bearer ${localStorage.getItem('token')}`,
       'Accept': 'application/json'
     })
 
+    /**
+     * Összes adat lekérése az API-ból
+     * Betölti: járművek, bérlések, üzenetek; számolja a statisztikákat
+     */
     const fetchData = async () => {
       loading.value = true
       try {
@@ -188,6 +214,10 @@ export default {
       }
     }
 
+    /**
+     * Jármű szerkesztő modal megnyitása
+     * @param {Object} v - A szerkesztendő jármű objektuma
+     */
     const openEdit = async (v) => {
       editingVehicle.value = { ...v }
       try {
@@ -203,6 +233,7 @@ export default {
       showEditModal.value = true
     }
 
+    /** Új kép URL hozzáadása a szerkesztett járműhöz (max 5) */
     const addImageToVehicle = async () => {
       const url = editingVehicle.value.newImageUrl?.trim()
       if (!url) return
@@ -222,6 +253,10 @@ export default {
       }
     }
 
+    /**
+     * Kép törlése a járműről
+     * @param {number} imageId - A törlendő kép azonosítója
+     */
     const removeImage = async (imageId) => {
       try {
         await axios.delete(`http://127.0.0.1:8000/api/vehicle-images/${imageId}`, { headers: getHeaders() })
@@ -231,11 +266,13 @@ export default {
       }
     }
 
+    /** Szerkesztő modal bezárása és állapot törlése */
     const closeEdit = () => {
       showEditModal.value = false
       editingVehicle.value = null
     }
 
+    /** Szerkesztett jármű adatainak mentése az API-ba */
     const saveVehicle = async () => {
       saveLoading.value = true
       try {
@@ -267,6 +304,7 @@ export default {
       }
     }
 
+    /** Jármű törlése (aktív bérlés esetén a backend megakadályozza) */
     const deleteVehicle = async (id) => {
       showConfirm('Biztosan törölni szeretnéd ezt a járművet?', async () => {
         try {
@@ -279,6 +317,7 @@ export default {
       })
     }
 
+    /** Bérlési kérelem jóváhagyása → autó foglalttá válik */
     const approveRental = async (rentalId) => {
       showConfirm('Biztosan jóváhagyod ezt a bérlést?', async () => {
         try {
@@ -291,6 +330,7 @@ export default {
       })
     }
 
+    /** Bérlési kérelem elutasítása → autó visszakerül szabad státuszba */
     const rejectRental = async (rentalId) => {
       showConfirm('Biztosan elutasítod ezt a bérlést?', async () => {
         try {
@@ -303,6 +343,7 @@ export default {
       })
     }
 
+    /** Üzenet olvasottnak jelölése */
     const markAgentMsgRead = async (id) => {
       try {
         await axios.patch(`http://127.0.0.1:8000/api/vehicle-messages/${id}/read`, {}, { headers: getHeaders() })
@@ -311,6 +352,7 @@ export default {
       } catch {}
     }
 
+    /** Üzenet törlése */
     const deleteAgentMsg = async (id) => {
       showConfirm('Biztosan törlöd ezt az üzenetet?', async () => {
         try {

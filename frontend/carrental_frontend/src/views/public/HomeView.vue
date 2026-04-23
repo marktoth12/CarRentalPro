@@ -7,6 +7,7 @@ export default {
   components: { RouterLink },
   data() {
     return {
+      // Járművek lista és kereső mezők
       vehicles: [],
       searchStartDate: '',
       searchEndDate: '',
@@ -28,10 +29,19 @@ export default {
     }
   },
   methods: {
+    /**
+     * Toast értesítő megjelenítése
+     * @param {string} message - Megjelenítendő szöveg
+     * @param {string} type - 'error' | 'success'
+     */
     showToast(message, type = 'error') {
       this.toast = { show: true, message, type }
       setTimeout(() => this.toast.show = false, 3000)
     },
+    /**
+     * Keresési paraméterek validálása és átirányítás a járművek oldalra
+     * A query paramétereket a VehiclesView olvassa be
+     */
     doSearch() {
       if (!this.searchStartDate || !this.searchEndDate) {
         this.showToast('Kérlek add meg a bérlés kezdetét és végét!')
@@ -50,20 +60,25 @@ export default {
         }
       })
     },
+    /** Szám formázása forint formátumba */
     formatFt(amount) {
       return Number(amount).toLocaleString('hu-HU') + ' Ft'
     },
+    /** Üzemanyag típus */
     fuelLabel(f) {
       const map = { petrol: 'Benzin', diesel: 'Dízel', electric: 'Elektromos', hybrid: 'Hibrid' }
       return map[f] ?? f
     },
+    /** Üzemanyag típus → Bootstrap ikon osztály */
     fuelIcon(f) {
       const map = { petrol: 'bi-fuel-pump', diesel: 'bi-fuel-pump-fill', electric: 'bi-lightning-charge-fill', hybrid: 'bi-recycle' }
       return map[f] ?? 'bi-fuel-pump'
     },
+    /** Váltó típus */
     transmissionLabel(t) {
       return t === 'automatic' ? 'Automata' : 'Manuális'
     },
+    /** Jármű első képének URL-je, fallback képpel */
     vehicleImage(vehicle) {
       if (vehicle.images && vehicle.images.length > 0) {
         return vehicle.images[0].image_url

@@ -7,14 +7,18 @@ export default {
   name: 'MyRentalsView',
   components: { RouterLink },
   setup() {
+    // Bérlések lista és állapot
     const rentals = ref([])
     const loading = ref(true)
     const error = ref(null)
 
+    /** Szám formázása  forint formátumba */
     const formatFt = (n) => Number(n).toLocaleString('hu-HU') + ' Ft'
 
+    /** Dátum formázása */
     const formatDate = (d) => d ? new Date(d).toLocaleDateString('hu-HU') : '–'
 
+    /** Bérlési státusz kód */
     const statusLabel = (s) => ({
       pending_approval: 'Jóváhagyásra vár',
       approved: 'Jóváhagyva',
@@ -24,6 +28,7 @@ export default {
       cancelled: 'Lemondva'
     }[s] ?? s)
 
+    /** Bérlési státusz → badge CSS osztály (lejárat dátuma alapján is) */
     const statusClass = (s, endDate) => {
       if (s === 'approved' && new Date(endDate) < new Date()) return 'badge-completed'
       if (s === 'approved' && new Date(endDate) >= new Date()) return 'badge-approved'
@@ -36,12 +41,14 @@ export default {
       }[s] ?? 'badge-secondary'
     }
 
+    /** Megjelenítendő státusz szöveg (lejárat alapján felülírva) */
     const displayStatus = (s, endDate) => {
       if (s === 'approved' && new Date(endDate) < new Date()) return 'Befejezett'
       if (s === 'approved' && new Date(s) <= new Date() && new Date(endDate) >= new Date()) return 'Folyamatban'
       return statusLabel(s)
     }
 
+    /** Saját bérlések betöltése az API-ból (?my=1 paraméterrel csak a saját bérlések) */
     onMounted(async () => {
       try {
         const token = localStorage.getItem('token')

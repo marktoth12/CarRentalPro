@@ -6,9 +6,11 @@ import axios from 'axios'
 export default {
   name: 'VehicleDetailsView',
   setup() {
+    // Router és route
     const route = useRoute()
     const router = useRouter()
 
+    // Jármű adatok és UI állapot
     const vehicle = ref(null)
     const loading = ref(true)
     const error = ref(null)
@@ -18,10 +20,14 @@ export default {
     const activeImage = ref(0)
     const bookingLoading = ref(false)
 
+    /** Üzemanyag típus */
     const fuelLabel = (f) => ({ petrol: 'Benzin', diesel: 'Dízel', electric: 'Elektromos', hybrid: 'Hibrid' }[f] ?? f)
+    /** Üzemanyag típus → Bootstrap ikon osztály */
     const fuelIcon = (f) => ({ petrol: 'bi-fuel-pump', diesel: 'bi-fuel-pump-fill', electric: 'bi-lightning-charge-fill', hybrid: 'bi-recycle' }[f] ?? 'bi-fuel-pump')
+    /** Szám formázása forint formátumban */
     const formatFt = (n) => Number(n).toLocaleString('hu-HU') + ' Ft'
 
+    /** Jármű képeinek listája, fallback képpel ha nincs feltöltve */
     const images = computed(() => {
       if (!vehicle.value) return []
       return vehicle.value.images?.length
@@ -29,16 +35,23 @@ export default {
           : ['https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=800']
     })
 
+    /** Kiválasztott napok száma a bérlés időtartamából */
     const totalDays = computed(() => {
       if (!startDate.value || !endDate.value) return 0
       const days = Math.ceil((new Date(endDate.value) - new Date(startDate.value)) / (1000 * 60 * 60 * 24))
       return days > 0 ? days : 0
     })
 
+    /** Teljes bérlési összeg = napok × napi ár */
     const totalPrice = computed(() => totalDays.value * (vehicle.value?.daily_rate ?? 0))
 
+    /** Dátum string konvertálása a backend által elvárt 'Y-m-d H:i:s' formátumba */
     const toDateTime = (d) => d.length === 10 ? d + ' 00:00:00' : d.replace('T', ' ') + ':00'
 
+    /**
+     * Jármű adatainak betöltése az API-ból
+     * @param {number} id - A betöltendő jármű azonosítója
+     */
     const loadVehicle = async (id) => {
       loading.value = true
       error.value = null
@@ -64,6 +77,10 @@ export default {
       if (newId) loadVehicle(newId)
     })
 
+    /**
+     * Foglalás leadása az API-ba
+     * Validálja a dátumokat és a bejelentkezést, majd létrehozza a bérlést
+     */
     const bookVehicle = async () => {
       if (!startDate.value || !endDate.value) { showToast('Kérlek válassz dátumot!', 'error'); return }
       if (new Date(endDate.value) <= new Date(startDate.value)) { showToast('A befejezés nem lehet korábbi a kezdésnél!', 'error'); return }
@@ -87,17 +104,28 @@ export default {
       }
     }
 
+    // Toast értesítő
     const toast = ref({ show: false, message: '', type: 'success' })
+    /**
+     * Toast értesítő megjelenítése
+     * @param {string} message - Megjelenítendő szöveg
+     * @param {string} type - 'success' | 'error'
+     */
     const showToast = (message, type = 'success') => {
       toast.value = { show: true, message, type }
       setTimeout(() => toast.value.show = false, 3000)
     }
 
+    // Üzenet küldő állapotok
     const msgText = ref('')
     const msgSending = ref(false)
     const msgSuccess = ref(false)
     const msgError = ref(null)
 
+    /**
+     * Üzenet küldése a bérbeadónak
+     * Bejelentkezés szükséges, üres üzenet nem küldhető
+     */
     const sendMessage = async () => {
       msgError.value = null
       if (!msgText.value.trim()) { msgError.value = 'Az üzenet nem lehet üres!'; return }
