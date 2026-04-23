@@ -46,9 +46,13 @@ export default {
       try {
         const token = localStorage.getItem('token')
         if (!token) { error.value = 'Be kell jelentkezned a bérléseid megtekintéséhez'; loading.value = false; return }
+
+        // ?my=1 paraméterrel a backend mindig csak a saját bérléseket adja vissza
         const res = await axios.get('http://localhost:8000/api/rentals', {
+          params: { my: 1 },
           headers: { Authorization: `Bearer ${token}` }
         })
+
         rentals.value = res.data.data || res.data
       } catch {
         error.value = 'Nem sikerült betölteni a bérléseket'

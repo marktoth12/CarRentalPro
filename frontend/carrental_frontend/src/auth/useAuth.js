@@ -3,7 +3,6 @@ import { ref } from 'vue'
 /**
  * Globális autentikációs állapot
  */
-
 const isAuthenticated = ref(false)   // Be van-e jelentkezve a felhasználó?
 const user = ref(null)               // A bejelentkezett felhasználó adatai
 
@@ -17,10 +16,11 @@ export const useAuth = () => {
      * @param {string} email - Felhasználó email címe
      * @param {string} role - Felhasználó szerepköre (user, rentalagent, admin)
      * @param {string} token - Sanctum token (élesben a backend küldi)
+     * @param {number} id - Felhasználó user_id-je (szűréshez szükséges)
      */
-    const login = (email, role, token = "dummy-token") => {
-        // Felhasználó adatainak mentése
-        user.value = { email, role }
+    const login = (email, role, token = "dummy-token", id = null) => {
+        // Felhasználó adatainak mentése (id-vel együtt)
+        user.value = { email, role, id }
         isAuthenticated.value = true
 
         // Adatok mentése localStorage-ba (oldaltöltés után is megmarad)
@@ -59,15 +59,9 @@ export const useAuth = () => {
         }
     }
 
-    /**
-     * Visszaadott értékek és metódusok
-     */
     return {
-        // Reaktív állapot
         isAuthenticated,
         user,
-
-        // Metódusok
         login,
         logout,
         checkAuth

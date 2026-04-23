@@ -1,46 +1,62 @@
 <script>
-  import { onMounted, ref } from 'vue'
-  import axios from 'axios'
+import { onMounted, ref } from 'vue'
+import axios from 'axios'
 
-  export default {
-    name: 'AgentDashboardView',
-    setup() {
-      const stats = ref({ totalVehicles: 0, activeRentals: 0, totalRevenue: 0, pendingRequests: 0 })
-      const vehicles = ref([])
-      const rentals = ref([])
-      const loading = ref(true)
-      const activeTab = ref('overview')
+export default {
+  name: 'AgentDashboardView',
+  setup() {
+    const stats = ref({ totalVehicles: 0, activeRentals: 0, totalRevenue: 0, pendingRequests: 0 })
+    const vehicles = ref([])
+    const rentals = ref([])
+    const loading = ref(true)
+    const activeTab = ref('overview')
 
-      const editingVehicle = ref(null)
-      const agentMessages = ref([])
+    const editingVehicle = ref(null)
+    const agentMessages = ref([])
 
-      const toast = ref({ show: false, message: '', type: 'success' })
-      const confirmDialog = ref({ show: false, message: '', onConfirm: null })
+    const toast = ref({ show: false, message: '', type: 'success' })
+    const confirmDialog = ref({ show: false, message: '', onConfirm: null })
 
-      const showToast = (message, type = 'success') => {
-        toast.value = { show: true, message, type }
-        setTimeout(() => toast.value.show = false, 3000)
-      }
+    const showToast = (message, type = 'success') => {
+      toast.value = { show: true, message, type }
+      setTimeout(() => toast.value.show = false, 3000)
+    }
 
-      const showConfirm = (message, onConfirm) => {
-        confirmDialog.value = { show: true, message, onConfirm }
-      }
+    const showConfirm = (message, onConfirm) => {
+      confirmDialog.value = { show: true, message, onConfirm }
+    }
 
-      const handleConfirm = () => {
-        if (confirmDialog.value.onConfirm) confirmDialog.value.onConfirm()
-        confirmDialog.value.show = false
-      }
+    const handleConfirm = () => {
+      if (confirmDialog.value.onConfirm) confirmDialog.value.onConfirm()
+      confirmDialog.value.show = false
+    }
 
-      const handleCancel = () => {
-        confirmDialog.value.show = false
-      }
+    const handleCancel = () => {
+      confirmDialog.value.show = false
+    }
 
-      const showEditModal = ref(false)
-      const saveLoading = ref(false)
+    const showEditModal = ref(false)
+    const saveLoading = ref(false)
 
-      const showAddModal = ref(false)
-      const addLoading = ref(false)
-      const newVehicle = ref({
+    const showAddModal = ref(false)
+    const addLoading = ref(false)
+    const newVehicle = ref({
+      brand: '',
+      model: '',
+      year: new Date().getFullYear(),
+      license_plate: '',
+      daily_rate: '',
+      fuel_type: 'petrol',
+      transmission_type: 'manual',
+      number_of_seats: 5,
+      location_pickup: '',
+      location_return: '',
+      description: '',
+      imageUrls: ['', '', '', '', '']
+    })
+
+    const openAddModal = () => {
+      newVehicle.value = {
         brand: '',
         model: '',
         year: new Date().getFullYear(),
@@ -53,287 +69,271 @@
         location_return: '',
         description: '',
         imageUrls: ['', '', '', '', '']
-      })
-
-      const openAddModal = () => {
-        newVehicle.value = {
-          brand: '',
-          model: '',
-          year: new Date().getFullYear(),
-          license_plate: '',
-          daily_rate: '',
-          fuel_type: 'petrol',
-          transmission_type: 'manual',
-          number_of_seats: 5,
-          location_pickup: '',
-          location_return: '',
-          description: '',
-          imageUrls: ['', '', '', '', '']
-        }
-        showAddModal.value = true
       }
+      showAddModal.value = true
+    }
 
-      const closeAddModal = () => {
-        showAddModal.value = false
+    const closeAddModal = () => {
+      showAddModal.value = false
+    }
+
+    const addVehicle = async () => {
+      const validUrls = newVehicle.value.imageUrls.filter(u => u.trim() !== '')
+      if (validUrls.length === 0) {
+        showToast('Legalább egy kép URL megadása kötelező!', 'error')
+        return
       }
-
-      const addVehicle = async () => {
-        const validUrls = newVehicle.value.imageUrls.filter(u => u.trim() !== '')
-        if (validUrls.length === 0) {
-          showToast('Legalább egy kép URL megadása kötelező!', 'error')
-          return
-        }
-        addLoading.value = true
-        try {
-          const res = await axios.post('http://127.0.0.1:8000/api/vehicles', newVehicle.value, { headers: getHeaders() })
-          const vehicleId = res.data.vehicle_id
-          for (const url of validUrls) {
-            await axios.post('http://127.0.0.1:8000/api/vehicle-images',
-                { vehicle_id: vehicleId, image_url: url },
-                { headers: getHeaders() }
-            )
-          }
-          await fetchData()
-          closeAddModal()
-          showToast('Jármű sikeresen hozzáadva! Az admin jóváhagyása után jelenik meg az oldalon.')
-        } catch (err) {
-          const errors = err.response?.data?.errors
-          if (errors) {
-            showToast(Object.values(errors).flat().join(' '), 'error')
-          } else {
-            showToast(err.response?.data?.message ?? 'Hiba történt a jármű hozzáadásakor.', 'error')
-          }
-        } finally {
-          addLoading.value = false
-        }
-      }
-
-      const formatFt = (amount) => Number(amount).toLocaleString('hu-HU') + ' Ft'
-
-      const statusLabel = (s) => {
-        const map = {
-          pending_approval: 'Jóváhagyásra vár',
-          approved: 'Jóváhagyva',
-          rejected: 'Elutasítva',
-          in_progress: 'Folyamatban',
-          completed: 'Befejezett',
-          cancelled: 'Lemondva'
-        }
-        return map[s] ?? s
-      }
-
-      const statusClass = (s) => {
-        const map = {
-          pending_approval: 'bg-warning-soft',
-          approved: 'bg-primary-soft',
-          in_progress: 'bg-success-soft',
-          completed: 'bg-secondary-soft',
-          rejected: 'bg-danger-soft',
-          cancelled: 'bg-danger-soft'
-        }
-        return map[s] ?? 'bg-secondary-soft'
-      }
-
-      const getHeaders = () => ({
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        'Accept': 'application/json'
-      })
-
-      const fetchData = async () => {
-        loading.value = true
-        try {
-          const [vehicleRes, rentalRes] = await Promise.all([
-            axios.get('http://127.0.0.1:8000/api/vehicles', {
-              params: { dashboard: 1 },
-              headers: getHeaders()
-            }),
-            axios.get('http://127.0.0.1:8000/api/rentals', { headers: getHeaders() })
-          ])
-
-          rentals.value = Array.isArray(rentalRes.data) ? rentalRes.data : (rentalRes.data?.data ?? [])
-
-          const now = new Date()
-          const rawVehicles = Array.isArray(vehicleRes.data) ? vehicleRes.data : []
-          vehicles.value = rawVehicles.map(v => {
-            const activeRental = rentals.value.find(r =>
-                r.vehicle_id === v.vehicle_id &&
-                ['approved', 'in_progress'].includes(r.rental_status) &&
-                new Date(r.end_date) > now
-            )
-            return {
-              ...v,
-              id: v.vehicle_id,
-              activeRentalStatus: activeRental ? activeRental.rental_status : null,
-              is_approved: Boolean(Number(v.is_approved))
-            }
-          })
-
-          const msgRes = await axios.get('http://127.0.0.1:8000/api/vehicle-messages', { headers: getHeaders() })
-          agentMessages.value = Array.isArray(msgRes.data) ? msgRes.data : []
-
-          stats.value.totalVehicles = vehicles.value.length
-          stats.value.activeRentals = rentals.value.filter(r =>
-              ['pending_approval', 'approved', 'in_progress'].includes(r.rental_status)
-          ).length
-          stats.value.totalRevenue = rentals.value.reduce((sum, r) => sum + Number(r.total_price || 0), 0)
-          stats.value.pendingRequests = vehicles.value.filter(v => !v.is_approved).length
-
-        } catch (err) {
-          console.error('Dashboard fetch hiba:', err.response?.status, err.response?.data)
-        } finally {
-          loading.value = false
-        }
-      }
-
-      const openEdit = async (v) => {
-        editingVehicle.value = { ...v }
-        try {
-          const res = await axios.get('http://127.0.0.1:8000/api/vehicle-images', {
-            params: { vehicle_id: v.vehicle_id },
-            headers: getHeaders()
-          })
-          editingVehicle.value.existingImages = res.data
-        } catch {
-          editingVehicle.value.existingImages = []
-        }
-        editingVehicle.value.newImageUrl = ''
-        showEditModal.value = true
-      }
-
-      const addImageToVehicle = async () => {
-        const url = editingVehicle.value.newImageUrl?.trim()
-        if (!url) return
-        if ((editingVehicle.value.existingImages?.length ?? 0) >= 5) {
-          showToast('Maximum 5 kép adható meg egy járműhöz.', 'error')
-          return
-        }
-        try {
-          const res = await axios.post('http://127.0.0.1:8000/api/vehicle-images',
-              { vehicle_id: editingVehicle.value.vehicle_id, image_url: url },
+      addLoading.value = true
+      try {
+        const res = await axios.post('http://127.0.0.1:8000/api/vehicles', newVehicle.value, { headers: getHeaders() })
+        const vehicleId = res.data.vehicle_id
+        for (const url of validUrls) {
+          await axios.post('http://127.0.0.1:8000/api/vehicle-images',
+              { vehicle_id: vehicleId, image_url: url },
               { headers: getHeaders() }
           )
-          editingVehicle.value.existingImages.push(res.data)
-          editingVehicle.value.newImageUrl = ''
-        } catch (err) {
-          showToast(err.response?.data?.error ?? 'Hiba a kép hozzáadásakor.', 'error')
         }
-      }
-
-      const removeImage = async (imageId) => {
-        try {
-          await axios.delete(`http://127.0.0.1:8000/api/vehicle-images/${imageId}`, { headers: getHeaders() })
-          editingVehicle.value.existingImages = editingVehicle.value.existingImages.filter(i => i.image_id !== imageId)
-        } catch (err) {
-          showToast('Hiba a kép törlésekor.', 'error')
+        await fetchData()
+        closeAddModal()
+        showToast('Jármű sikeresen hozzáadva! Az admin jóváhagyása után jelenik meg az oldalon.')
+      } catch (err) {
+        const errors = err.response?.data?.errors
+        if (errors) {
+          showToast(Object.values(errors).flat().join(' '), 'error')
+        } else {
+          showToast(err.response?.data?.message ?? 'Hiba történt a jármű hozzáadásakor.', 'error')
         }
-      }
-
-      const closeEdit = () => {
-        showEditModal.value = false
-        editingVehicle.value = null
-      }
-
-      const saveVehicle = async () => {
-        saveLoading.value = true
-        try {
-          const payload = {
-            brand: editingVehicle.value.brand,
-            model: editingVehicle.value.model,
-            year: editingVehicle.value.year,
-            license_plate: editingVehicle.value.license_plate,
-            daily_rate: editingVehicle.value.daily_rate,
-            fuel_type: editingVehicle.value.fuel_type,
-            transmission_type: editingVehicle.value.transmission_type,
-            number_of_seats: editingVehicle.value.number_of_seats,
-            location_pickup: editingVehicle.value.location_pickup,
-            location_return: editingVehicle.value.location_return,
-            description: editingVehicle.value.description,
-          }
-          await axios.put(
-              `http://127.0.0.1:8000/api/vehicles/${editingVehicle.value.vehicle_id}`,
-              payload,
-              { headers: getHeaders() }
-          )
-          await fetchData()
-          closeEdit()
-          showToast('A jármű adatai sikeresen mentve!')
-        } catch (err) {
-          showToast(err.response?.data?.message ?? 'Mentési hiba történt.', 'error')
-        } finally {
-          saveLoading.value = false
-        }
-      }
-
-      const deleteVehicle = async (id) => {
-        showConfirm('Biztosan törölni szeretnéd ezt a járművet?', async () => {
-          try {
-            await axios.delete(`http://127.0.0.1:8000/api/vehicles/${id}`, { headers: getHeaders() })
-            await fetchData()
-            showToast('Jármű törölve.')
-          } catch (err) {
-            showToast(err.response?.data?.error ?? 'Törlési hiba történt.', 'error')
-          }
-        })
-      }
-
-      const approveRental = async (rentalId) => {
-        showConfirm('Biztosan jóváhagyod ezt a bérlést?', async () => {
-          try {
-            await axios.put(`http://127.0.0.1:8000/api/rentals/${rentalId}`, { rental_status: 'approved' }, { headers: getHeaders() })
-            await fetchData()
-            showToast('Bérlés jóváhagyva!')
-          } catch (err) {
-            showToast(err.response?.data?.message ?? 'Hiba a jóváhagyás során', 'error')
-          }
-        })
-      }
-
-      const rejectRental = async (rentalId) => {
-        showConfirm('Biztosan elutasítod ezt a bérlést?', async () => {
-          try {
-            await axios.put(`http://127.0.0.1:8000/api/rentals/${rentalId}`, { rental_status: 'rejected' }, { headers: getHeaders() })
-            await fetchData()
-            showToast('Bérlés elutasítva.', 'error')
-          } catch (err) {
-            showToast(err.response?.data?.message ?? 'Hiba az elutasítás során', 'error')
-          }
-        })
-      }
-
-      const markAgentMsgRead = async (id) => {
-        try {
-          await axios.patch(`http://127.0.0.1:8000/api/vehicle-messages/${id}/read`, {}, { headers: getHeaders() })
-          const msg = agentMessages.value.find(m => m.id === id)
-          if (msg) msg.is_read = true
-        } catch {}
-      }
-
-      const deleteAgentMsg = async (id) => {
-        showConfirm('Biztosan törlöd ezt az üzenetet?', async () => {
-          try {
-            await axios.delete(`http://127.0.0.1:8000/api/vehicle-messages/${id}`, { headers: getHeaders() })
-            agentMessages.value = agentMessages.value.filter(m => m.id !== id)
-            showToast('Üzenet törölve.')
-          } catch {
-            showToast('Hiba a törlés során.', 'error')
-          }
-        })
-      }
-
-      onMounted(fetchData)
-
-      return {
-        stats, vehicles, rentals, loading, activeTab,
-        statusLabel, statusClass, formatFt,
-        editingVehicle, showEditModal, saveLoading,
-        toast, confirmDialog, handleConfirm, handleCancel,
-        openEdit, closeEdit, saveVehicle, deleteVehicle, addImageToVehicle, removeImage,
-        approveRental, rejectRental,
-        agentMessages, markAgentMsgRead, deleteAgentMsg,
-        showAddModal, addLoading, newVehicle, openAddModal, closeAddModal, addVehicle
+      } finally {
+        addLoading.value = false
       }
     }
+
+    const formatFt = (amount) => Number(amount).toLocaleString('hu-HU') + ' Ft'
+
+    const statusLabel = (s) => {
+      const map = {
+        pending_approval: 'Jóváhagyásra vár',
+        approved: 'Jóváhagyva',
+        rejected: 'Elutasítva',
+        in_progress: 'Folyamatban',
+        completed: 'Befejezett',
+        cancelled: 'Lemondva'
+      }
+      return map[s] ?? s
+    }
+
+    const statusClass = (s) => {
+      const map = {
+        pending_approval: 'bg-warning-soft',
+        approved: 'bg-primary-soft',
+        in_progress: 'bg-success-soft',
+        completed: 'bg-secondary-soft',
+        rejected: 'bg-danger-soft',
+        cancelled: 'bg-danger-soft'
+      }
+      return map[s] ?? 'bg-secondary-soft'
+    }
+
+    const getHeaders = () => ({
+      'Authorization': `Bearer ${localStorage.getItem('token')}`,
+      'Accept': 'application/json'
+    })
+
+    const fetchData = async () => {
+      loading.value = true
+      try {
+        const [vehicleRes, rentalRes] = await Promise.all([
+          axios.get('http://127.0.0.1:8000/api/vehicles', {
+            params: { dashboard: 1 },
+            headers: getHeaders()
+          }),
+          axios.get('http://127.0.0.1:8000/api/rentals', { headers: getHeaders() })
+        ])
+
+        rentals.value = Array.isArray(rentalRes.data) ? rentalRes.data : (rentalRes.data?.data ?? [])
+
+        const now = new Date()
+        const rawVehicles = Array.isArray(vehicleRes.data) ? vehicleRes.data : []
+        vehicles.value = rawVehicles.map(v => {
+          const activeRental = rentals.value.find(r =>
+              r.vehicle_id === v.vehicle_id &&
+              ['approved', 'in_progress'].includes(r.rental_status) &&
+              new Date(r.end_date) > now
+          )
+          return {
+            ...v,
+            id: v.vehicle_id,
+            activeRentalStatus: activeRental ? activeRental.rental_status : null,
+            is_approved: Boolean(Number(v.is_approved))
+          }
+        })
+
+        const msgRes = await axios.get('http://127.0.0.1:8000/api/vehicle-messages', { headers: getHeaders() })
+        agentMessages.value = Array.isArray(msgRes.data) ? msgRes.data : []
+
+        stats.value.totalVehicles = vehicles.value.length
+        stats.value.activeRentals = rentals.value.filter(r =>
+            ['pending_approval', 'approved', 'in_progress'].includes(r.rental_status)
+        ).length
+        stats.value.totalRevenue = rentals.value.reduce((sum, r) => sum + Number(r.total_price || 0), 0)
+        stats.value.pendingRequests = vehicles.value.filter(v => !v.is_approved).length
+
+      } catch (err) {
+        console.error('Dashboard fetch hiba:', err.response?.status, err.response?.data)
+      } finally {
+        loading.value = false
+      }
+    }
+
+    const openEdit = async (v) => {
+      editingVehicle.value = { ...v }
+      try {
+        const res = await axios.get('http://127.0.0.1:8000/api/vehicle-images', {
+          params: { vehicle_id: v.vehicle_id },
+          headers: getHeaders()
+        })
+        editingVehicle.value.existingImages = res.data
+      } catch {
+        editingVehicle.value.existingImages = []
+      }
+      editingVehicle.value.newImageUrl = ''
+      showEditModal.value = true
+    }
+
+    const addImageToVehicle = async () => {
+      const url = editingVehicle.value.newImageUrl?.trim()
+      if (!url) return
+      if ((editingVehicle.value.existingImages?.length ?? 0) >= 5) {
+        showToast('Maximum 5 kép adható meg egy járműhöz.', 'error')
+        return
+      }
+      try {
+        const res = await axios.post('http://127.0.0.1:8000/api/vehicle-images',
+            { vehicle_id: editingVehicle.value.vehicle_id, image_url: url },
+            { headers: getHeaders() }
+        )
+        editingVehicle.value.existingImages.push(res.data)
+        editingVehicle.value.newImageUrl = ''
+      } catch (err) {
+        showToast(err.response?.data?.error ?? 'Hiba a kép hozzáadásakor.', 'error')
+      }
+    }
+
+    const removeImage = async (imageId) => {
+      try {
+        await axios.delete(`http://127.0.0.1:8000/api/vehicle-images/${imageId}`, { headers: getHeaders() })
+        editingVehicle.value.existingImages = editingVehicle.value.existingImages.filter(i => i.image_id !== imageId)
+      } catch (err) {
+        showToast('Hiba a kép törlésekor.', 'error')
+      }
+    }
+
+    const closeEdit = () => {
+      showEditModal.value = false
+      editingVehicle.value = null
+    }
+
+    const saveVehicle = async () => {
+      saveLoading.value = true
+      try {
+        const payload = {
+          brand: editingVehicle.value.brand,
+          model: editingVehicle.value.model,
+          year: editingVehicle.value.year,
+          license_plate: editingVehicle.value.license_plate,
+          daily_rate: editingVehicle.value.daily_rate,
+          fuel_type: editingVehicle.value.fuel_type,
+          transmission_type: editingVehicle.value.transmission_type,
+          number_of_seats: editingVehicle.value.number_of_seats,
+          location_pickup: editingVehicle.value.location_pickup,
+          location_return: editingVehicle.value.location_return,
+          description: editingVehicle.value.description,
+        }
+        await axios.put(
+            `http://127.0.0.1:8000/api/vehicles/${editingVehicle.value.vehicle_id}`,
+            payload,
+            { headers: getHeaders() }
+        )
+        await fetchData()
+        closeEdit()
+        showToast('A jármű adatai sikeresen mentve!')
+      } catch (err) {
+        showToast(err.response?.data?.message ?? 'Mentési hiba történt.', 'error')
+      } finally {
+        saveLoading.value = false
+      }
+    }
+
+    const deleteVehicle = async (id) => {
+      showConfirm('Biztosan törölni szeretnéd ezt a járművet?', async () => {
+        try {
+          await axios.delete(`http://127.0.0.1:8000/api/vehicles/${id}`, { headers: getHeaders() })
+          await fetchData()
+          showToast('Jármű törölve.')
+        } catch (err) {
+          showToast(err.response?.data?.error ?? 'Törlési hiba történt.', 'error')
+        }
+      })
+    }
+
+    const approveRental = async (rentalId) => {
+      showConfirm('Biztosan jóváhagyod ezt a bérlést?', async () => {
+        try {
+          await axios.put(`http://127.0.0.1:8000/api/rentals/${rentalId}`, { rental_status: 'approved' }, { headers: getHeaders() })
+          await fetchData()
+          showToast('Bérlés jóváhagyva!')
+        } catch (err) {
+          showToast(err.response?.data?.message ?? 'Hiba a jóváhagyás során', 'error')
+        }
+      })
+    }
+
+    const rejectRental = async (rentalId) => {
+      showConfirm('Biztosan elutasítod ezt a bérlést?', async () => {
+        try {
+          await axios.put(`http://127.0.0.1:8000/api/rentals/${rentalId}`, { rental_status: 'rejected' }, { headers: getHeaders() })
+          await fetchData()
+          showToast('Bérlés elutasítva.', 'error')
+        } catch (err) {
+          showToast(err.response?.data?.message ?? 'Hiba az elutasítás során', 'error')
+        }
+      })
+    }
+
+    const markAgentMsgRead = async (id) => {
+      try {
+        await axios.patch(`http://127.0.0.1:8000/api/vehicle-messages/${id}/read`, {}, { headers: getHeaders() })
+        const msg = agentMessages.value.find(m => m.id === id)
+        if (msg) msg.is_read = true
+      } catch {}
+    }
+
+    const deleteAgentMsg = async (id) => {
+      showConfirm('Biztosan törlöd ezt az üzenetet?', async () => {
+        try {
+          await axios.delete(`http://127.0.0.1:8000/api/vehicle-messages/${id}`, { headers: getHeaders() })
+          agentMessages.value = agentMessages.value.filter(m => m.id !== id)
+          showToast('Üzenet törölve.')
+        } catch {
+          showToast('Hiba a törlés során.', 'error')
+        }
+      })
+    }
+
+    onMounted(fetchData)
+
+    return {
+      stats, vehicles, rentals, loading, activeTab,
+      statusLabel, statusClass, formatFt,
+      editingVehicle, showEditModal, saveLoading,
+      toast, confirmDialog, handleConfirm, handleCancel,
+      openEdit, closeEdit, saveVehicle, deleteVehicle, addImageToVehicle, removeImage,
+      approveRental, rejectRental,
+      agentMessages, markAgentMsgRead, deleteAgentMsg,
+      showAddModal, addLoading, newVehicle, openAddModal, closeAddModal, addVehicle
+    }
   }
+}
 </script>
 
 <template>
@@ -348,7 +348,7 @@
             </h2>
           </div>
           <div class="col-md-6 text-md-end">
-            <p class="text-muted mb-0">Utolsó frissítés: <strong>2026. 04. 21.</strong></p>
+            <p class="text-muted mb-0">Utolsó frissítés: <strong>2026.04.23</strong></p>
           </div>
         </div>
       </header>
@@ -391,8 +391,12 @@
               </button>
             </li>
             <li class="nav-item">
-              <button class="nav-link" :class="{ active: activeTab === 'rentals' }" @click="activeTab = 'rentals'">
+              <button class="nav-link position-relative" :class="{ active: activeTab === 'rentals' }" @click="activeTab = 'rentals'">
                 <i class="bi bi-calendar-event me-2"></i>Bérlések
+                <span v-if="rentals.filter(r => r.rental_status === 'pending_approval').length > 0"
+                      class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:10px;color:white">
+                  {{ rentals.filter(r => r.rental_status === 'pending_approval').length }}
+                </span>
               </button>
             </li>
             <li class="nav-item">
@@ -412,7 +416,7 @@
           <div v-if="activeTab === 'overview'" class="fade-in">
             <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
               <h5 class="fw-bold text-success mb-0">Üzleti Összefoglaló</h5>
-              <button class="btn btn-success rounded-pill px-4" @click="openAddModal">
+              <button class="add-vehicle-btn" @click="openAddModal">
                 <i class="bi bi-plus-circle me-2"></i>Új autó felvétele
               </button>
             </div>
@@ -829,246 +833,257 @@
 </template>
 
 <style scoped>
-  .agent-dashboard-wrapper { background-color: #f8f9fa; min-height: 100vh; }
-  .custom-stat-card { background: white; border-radius: 20px; padding: 1.5rem; text-align: center; box-shadow: 0 5px 20px rgba(0,0,0,0.05); }
-  .admin-icon { font-size: 2rem; color: #198754; margin-bottom: 0.5rem; display: block; }
-  .admin-main-card { background: white; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); overflow: hidden; }
-  .admin-tabs-header { background: #fdfdfd; padding: 1.25rem; border-bottom: 1px solid #eee; }
-  .nav-pills .nav-link { color: #6c757d; font-weight: 500; border-radius: 12px; padding: 0.6rem 1.2rem; transition: 0.3s; border: none; background: none; }
-  .nav-pills .nav-link.active { background-color: #198754; color: white; }
-  .bg-success-soft { background-color: #e6f4ea; color: #198754; }
-  .bg-danger-soft { background-color: #fce8e6; color: #d93025; }
-  .bg-primary-soft { background-color: #e7f1ff; color: #0d6efd; }
-  .bg-warning-soft { background-color: #fff4e5; color: #ff9800; }
-  .bg-secondary-soft { background-color: #f0f0f0; color: #6c757d; }
-  .btn-icon-only { background: #f8f9fa; border-radius: 8px; width: 35px; height: 35px; border: none; display: inline-flex; align-items: center; justify-content: center; }
-  .fade-in { animation: fadeIn 0.3s ease-in; }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+.agent-dashboard-wrapper { background-color: #f8f9fa; min-height: 100vh; }
+.custom-stat-card { background: white; border-radius: 20px; padding: 1.5rem; text-align: center; box-shadow: 0 5px 20px rgba(0,0,0,0.05); }
+.admin-icon { font-size: 2rem; color: #198754; margin-bottom: 0.5rem; display: block; }
+.admin-main-card { background: white; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); overflow: hidden; }
+.admin-tabs-header { background: #fdfdfd; padding: 1.25rem; border-bottom: 1px solid #eee; }
+.nav-pills .nav-link { color: #6c757d; font-weight: 500; border-radius: 12px; padding: 0.6rem 1.2rem; transition: 0.3s; border: none; background: none; }
+.nav-pills .nav-link.active { background-color: #198754; color: white; }
+.bg-success-soft { background-color: #e6f4ea; color: #198754; }
+.bg-danger-soft { background-color: #fce8e6; color: #d93025; }
+.bg-primary-soft { background-color: #e7f1ff; color: #0d6efd; }
+.bg-warning-soft { background-color: #fff4e5; color: #ff9800; }
+.bg-secondary-soft { background-color: #f0f0f0; color: #6c757d; }
+.btn-icon-only { background: #f8f9fa; border-radius: 8px; width: 35px; height: 35px; border: none; display: inline-flex; align-items: center; justify-content: center; }
+.fade-in { animation: fadeIn 0.3s ease-in; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
-  .ov-kpi-card {
-    background: white; border-radius: 16px; padding: 1rem 1.25rem;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-    display: flex; align-items: center; gap: 14px;
-  }
-  .ov-kpi-icon {
-    width: 48px; height: 48px; border-radius: 12px; flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center; font-size: 1.4rem;
-  }
-  .ov-kpi-value { font-size: 1.3rem; font-weight: 700; color: #1a1a1a; line-height: 1.2; }
-  .ov-kpi-label { font-size: 12px; color: #999; margin-top: 2px; }
+.ov-kpi-card {
+  background: white; border-radius: 16px; padding: 1rem 1.25rem;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  display: flex; align-items: center; gap: 14px;
+}
+.ov-kpi-icon {
+  width: 48px; height: 48px; border-radius: 12px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 1.4rem;
+}
+.ov-kpi-value { font-size: 1.3rem; font-weight: 700; color: #1a1a1a; line-height: 1.2; }
+.ov-kpi-label { font-size: 12px; color: #999; margin-top: 2px; }
 
-  .ov-panel {
-    background: white; border-radius: 16px; padding: 1.1rem 1.25rem;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-  }
-  .ov-panel-title { font-size: 13px; font-weight: 700; color: #198754; margin-bottom: 12px; }
-  .ov-progress-bar {
-    height: 8px; background: #f0f0f0; border-radius: 10px; overflow: hidden;
-  }
-  .ov-progress-fill {
-    height: 100%; background: #198754; border-radius: 10px;
-    transition: width 0.6s ease;
-  }
+.ov-panel {
+  background: white; border-radius: 16px; padding: 1.1rem 1.25rem;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+.ov-panel-title { font-size: 13px; font-weight: 700; color: #198754; margin-bottom: 12px; }
+.ov-progress-bar {
+  height: 8px; background: #f0f0f0; border-radius: 10px; overflow: hidden;
+}
+.ov-progress-fill {
+  height: 100%; background: #198754; border-radius: 10px;
+  transition: width 0.6s ease;
+}
 
-  .tab-empty {
-    text-align: center; padding: 3rem;
-    background: #f8f9fa; border-radius: 16px;
-  }
-  .tab-card-grid { display: flex; flex-direction: column; gap: 10px; }
-  .tab-item-card {
-    background: white; border-radius: 14px; padding: 1rem 1.25rem;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-    transition: box-shadow 0.2s;
-  }
-  .tab-item-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.09); }
-  .tab-item-unread { border-left-color: #ff9800; }
-  .tab-item-main { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-  .tab-item-icon {
-    width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center; font-size: 1.2rem;
-  }
-  .tab-item-title { font-size: 14px; font-weight: 700; color: #1a1a1a; margin-bottom: 3px; }
-  .tab-item-sub { font-size: 12px; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 400px; }
+.tab-empty {
+  text-align: center; padding: 3rem;
+  background: #f8f9fa; border-radius: 16px;
+}
+.tab-card-grid { display: flex; flex-direction: column; gap: 10px; }
+.tab-item-card {
+  background: white; border-radius: 14px; padding: 1rem 1.25rem;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  transition: box-shadow 0.2s;
+}
+.tab-item-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.09); }
+.tab-item-unread { border-left-color: #ff9800; }
+.tab-item-main { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.tab-item-icon {
+  width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 1.2rem;
+}
+.tab-item-title { font-size: 14px; font-weight: 700; color: #1a1a1a; margin-bottom: 3px; }
+.tab-item-sub { font-size: 12px; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 400px; }
 
-  .modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.45);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 2000;
-  }
-  .modal-box {
-    background: white;
-    border-radius: 20px;
-    width: 100%;
-    max-width: 560px;
-    max-height: 90vh;
-    overflow-y: auto;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
-  }
-  .modal-header-custom {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 1.25rem 1.5rem;
-    border-bottom: 2px solid #198754;
-    background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
-    border-radius: 20px 20px 0 0;
-  }
-  .btn-close-custom {
-    background: none;
-    border: none;
-    font-size: 1.5rem;
-    line-height: 1;
-    color: #6c757d;
-    cursor: pointer;
-    padding: 0 4px;
-  }
-  .btn-close-custom:hover { color: #212529; }
-  .modal-body-custom { padding: 1.5rem; }
-  .modal-footer-custom {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    padding: 1rem 1.5rem;
-    border-top: 1px solid #eee;
-  }
-  .form-label-custom {
-    display: block;
-    font-size: 13px;
-    font-weight: 600;
-    color: #198754;
-    margin-bottom: 5px;
-  }
-  .form-input-custom {
-    width: 100%;
-    padding: 8px 12px;
-    border: 1px solid #dee2e6;
-    border-radius: 8px;
-    font-size: 14px;
-    color: #212529;
-    background: #fff;
-    transition: border-color 0.2s;
-    outline: none;
-  }
-  .form-input-custom:focus {
-    border-color: #198754;
-    box-shadow: 0 0 0 3px rgba(25,135,84,0.1);
-  }
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+.modal-box {
+  background: white;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 620px;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+}
+.modal-header-custom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 2px solid #198754;
+  background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
+  border-radius: 20px 20px 0 0;
+}
+.btn-close-custom {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: #6c757d;
+  cursor: pointer;
+  padding: 0 4px;
+}
+.btn-close-custom:hover { color: #212529; }
+.modal-body-custom { padding: 1.5rem; overflow-y: auto; flex: 1; }
+.modal-footer-custom {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #eee;
+}
+.form-label-custom {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #198754;
+  margin-bottom: 5px;
+}
+.form-input-custom {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #212529;
+  background: #fff;
+  transition: border-color 0.2s;
+  outline: none;
+}
+.form-input-custom:focus {
+  border-color: #198754;
+  box-shadow: 0 0 0 3px rgba(25,135,84,0.1);
+}
 
-  .image-index-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    min-width: 28px;
-    background: #e6f4ea;
-    color: #198754;
-    font-weight: 700;
-    font-size: 13px;
-    border-radius: 50%;
-    margin-top: 6px;
-  }
-  .image-preview-thumb {
-    width: 46px;
-    min-width: 46px;
-    height: 38px;
-    border-radius: 6px;
-    overflow: hidden;
-    border: 1px solid #dee2e6;
-    margin-top: 3px;
-  }
-  .image-preview-thumb img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-  .existing-images-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-  .existing-image-item {
-    position: relative;
-    width: 80px;
-    height: 60px;
-    border-radius: 8px;
-    overflow: hidden;
-    border: 1px solid #dee2e6;
-  }
-  .existing-image-item img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-  .remove-img-btn {
-    position: absolute;
-    top: 2px;
-    right: 2px;
-    width: 20px;
-    height: 20px;
-    background: rgba(220,53,69,0.85);
-    color: white;
-    border: none;
-    border-radius: 50%;
-    font-size: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    padding: 0;
-    line-height: 1;
-  }
-  .remove-img-btn:hover { background: #dc3545; }
+.image-index-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  background: #e6f4ea;
+  color: #198754;
+  font-weight: 700;
+  font-size: 13px;
+  border-radius: 50%;
+  margin-top: 6px;
+}
+.image-preview-thumb {
+  width: 46px;
+  min-width: 46px;
+  height: 38px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #dee2e6;
+  margin-top: 3px;
+}
+.image-preview-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.existing-images-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.existing-image-item {
+  position: relative;
+  width: 80px;
+  height: 60px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #dee2e6;
+}
+.existing-image-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.remove-img-btn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 20px;
+  height: 20px;
+  background: rgba(220,53,69,0.85);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+.remove-img-btn:hover { background: #dc3545; }
 
-  /* Toast és Confirm */
-  .toast-notification {
-    position: fixed;
-    bottom: 2rem;
-    right: 2rem;
-    padding: 14px 20px;
-    border-radius: 14px;
-    font-size: 14px;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    box-shadow: 0 8px 30px rgba(0,0,0,0.15);
-    z-index: 9999;
-    max-width: 360px;
-  }
-  .toast-success { background: #198754; color: white; }
-  .toast-error   { background: #d93025; color: white; }
-  .toast-warning { background: #ff9800; color: white; }
+/* Toast és Confirm */
+.toast-notification {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  padding: 14px 20px;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+  z-index: 9999;
+  max-width: 360px;
+}
+.toast-success { background: #198754; color: white; }
+.toast-error   { background: #d93025; color: white; }
+.toast-warning { background: #ff9800; color: white; }
 
-  .toast-enter-active, .toast-leave-active { transition: all 0.3s ease; }
-  .toast-enter-from, .toast-leave-to { opacity: 0; transform: translateY(20px); }
+.toast-enter-active, .toast-leave-active { transition: all 0.3s ease; }
+.toast-enter-from, .toast-leave-to { opacity: 0; transform: translateY(20px); }
 
-  .confirm-overlay {
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,0.45);
-    display: flex; align-items: center; justify-content: center;
-    z-index: 9998;
-  }
-  .confirm-box {
-    background: white; border-radius: 20px; padding: 2rem;
-    max-width: 380px; width: 90%; text-align: center;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
-  }
-  .confirm-icon i { font-size: 2.5rem; color: #ff9800; }
-  .confirm-message { font-size: 15px; color: #333; margin: 1rem 0 1.5rem; font-weight: 500; }
-  .confirm-actions { display: flex; gap: 10px; justify-content: center; }
-  .confirm-btn-cancel {
-    padding: 10px 24px; border-radius: 50px; border: 1px solid #dee2e6;
-    background: white; color: #555; font-weight: 600; cursor: pointer;
-  }
-  .confirm-btn-cancel:hover { background: #f5f5f5; }
-  .confirm-btn-ok {
-    padding: 10px 24px; border-radius: 50px; border: none;
-    background: #198754; color: white; font-weight: 600; cursor: pointer;
-  }
-  .confirm-btn-ok:hover { opacity: 0.9; }
+.confirm-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 9998;
+}
+.confirm-box {
+  background: white; border-radius: 20px; padding: 2rem;
+  max-width: 380px; width: 90%; text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+}
+.confirm-icon i { font-size: 2.5rem; color: #ff9800; }
+.confirm-message { font-size: 15px; color: #333; margin: 1rem 0 1.5rem; font-weight: 500; }
+.confirm-actions { display: flex; gap: 10px; justify-content: center; }
+.confirm-btn-cancel {
+  padding: 10px 24px; border-radius: 50px; border: 1px solid #dee2e6;
+  background: white; color: #555; font-weight: 600; cursor: pointer;
+}
+.confirm-btn-cancel:hover { background: #f5f5f5; }
+.confirm-btn-ok {
+  padding: 10px 24px; border-radius: 50px; border: none;
+  background: #198754; color: white; font-weight: 600; cursor: pointer;
+}
+.confirm-btn-ok:hover { opacity: 0.9; }
+
+/* Új autó gomb */
+.add-vehicle-btn {
+  display: inline-flex; align-items: center;
+  background: #198754; color: white; border: none;
+  border-radius: 50px; padding: 10px 24px;
+  font-size: 14px; font-weight: 600; cursor: pointer;
+  transition: opacity 0.2s, transform 0.15s;
+}
+.add-vehicle-btn:hover { opacity: 0.9; transform: scale(1.02); }
 </style>

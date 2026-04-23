@@ -15,7 +15,7 @@ export default {
     const selectedFuelType = ref('')
     const selectedTransmission = ref('')
     const minPrice = ref(0)
-    const maxPrice = ref(1000000)
+    const maxPrice = ref(500000)
     const searchStartDate = ref('')
     const searchEndDate = ref('')
     const searchLocation = ref('')
@@ -139,8 +139,8 @@ export default {
             Ár: {{ formatPrice(minPrice) }} - {{ formatPrice(maxPrice) }}
           </label>
 
-          <input type="range" class="form-range mb-2" v-model.number="minPrice" min="0" max="100000">
-          <input type="range" class="form-range" v-model.number="maxPrice" min="0" max="1000000">
+          <input type="range" class="form-range mb-2" v-model.number="minPrice" min="0" max="500000">
+          <input type="range" class="form-range" v-model.number="maxPrice" min="0" max="500000">
 
         </div>
 

@@ -68,7 +68,7 @@ export default {
       if (!startDate.value || !endDate.value) { showToast('Kérlek válassz dátumot!', 'error'); return }
       if (new Date(endDate.value) <= new Date(startDate.value)) { showToast('A befejezés nem lehet korábbi a kezdésnél!', 'error'); return }
       const token = localStorage.getItem('token')
-      if (!token) { showToast('A foglaláshoz be kell jelentkezned!', 'error'); router.push('/auth/login'); return }
+      if (!token) { showToast('A foglaláshoz be kell jelentkezned!', 'error'); setTimeout(() => router.push('/auth/login'), 2000); return }
       bookingLoading.value = true
       try {
         await axios.post('http://localhost:8000/api/rentals', {
@@ -79,7 +79,7 @@ export default {
           return_location: vehicle.value.location_return
         }, { headers: { Authorization: `Bearer ${token}` } })
         showToast('Sikeres foglalás! A bérbeadó hamarosan visszaigazol.')
-        setTimeout(() => router.push('/my-rentals'), 1500)
+        setTimeout(() => router.push('/my-rentals'), 2000)
       } catch (err) {
         showToast(err.response?.data?.message ?? 'Hiba a foglalás során.', 'error')
       } finally {
@@ -224,7 +224,7 @@ export default {
                 <i class="bi bi-person-fill"></i>
               </div>
               <div>
-                <div class="fw-bold">{{ vehicle.rentalAgent ? `${vehicle.rentalAgent.first_name} ${vehicle.rentalAgent.last_name}` : 'Bérbeadó' }}</div>
+                <div class="fw-bold">{{ vehicle.rental_agent ? `${vehicle.rental_agent.first_name} ${vehicle.rental_agent.last_name}` : 'Bérbeadó' }}</div>
                 <div class="text-muted small">Regisztrált bérbeadó</div>
               </div>
             </div>
@@ -330,7 +330,6 @@ export default {
 
     </div>
   </div>
-
   <!-- Toast értesítő -->
   <Transition name="toast">
     <div v-if="toast.show" class="vd-toast" :class="`toast-${toast.type}`">
@@ -458,8 +457,6 @@ export default {
 }
 .similar-card:hover { transform: translateY(-4px); }
 .similar-img { width: 100%; height: 220px; object-fit: cover; }
-
-/* TOAST */
 .vd-toast {
   position: fixed; bottom: 2rem; right: 2rem;
   padding: 14px 20px; border-radius: 14px;

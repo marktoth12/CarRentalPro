@@ -37,7 +37,7 @@ export default {
         const userData = res.data.user || {}
         const userRole = userData.role || 'user'
 
-        login(userData.email, userRole, token)
+        login(userData.email, userRole, token, userData.id)
 
         successMessage.value = 'Sikeres bejelentkezés!'
 
