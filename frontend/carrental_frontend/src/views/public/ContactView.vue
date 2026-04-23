@@ -1,9 +1,54 @@
 <script>
 import { RouterLink } from "vue-router"
+import { ref } from 'vue'
+import axios from 'axios'
 
 export default {
   name: "ContactView",
-  components: { RouterLink }
+  components: { RouterLink },
+  setup() {
+    const firstName = ref('')
+    const lastName = ref('')
+    const email = ref('')
+    const message = ref('')
+    const agreed = ref(false)
+    const sending = ref(false)
+    const success = ref(false)
+    const error = ref(null)
+
+    const sendMessage = async () => {
+      error.value = null
+      if (!firstName.value || !lastName.value || !email.value || !message.value) {
+        error.value = 'Kérjük, töltsd ki az összes mezőt!'
+        return
+      }
+      if (!agreed.value) {
+        error.value = 'Az adatvédelmi tájékoztató elfogadása kötelező!'
+        return
+      }
+      sending.value = true
+      try {
+        await axios.post('http://127.0.0.1:8000/api/contact', {
+          first_name: firstName.value,
+          last_name: lastName.value,
+          email: email.value,
+          message: message.value
+        })
+        success.value = true
+        firstName.value = ''
+        lastName.value = ''
+        email.value = ''
+        message.value = ''
+        agreed.value = false
+      } catch (err) {
+        error.value = err.response?.data?.message ?? 'Hiba történt az üzenet küldése során.'
+      } finally {
+        sending.value = false
+      }
+    }
+
+    return { firstName, lastName, email, message, agreed, sending, success, error, sendMessage }
+  }
 }
 </script>
 
@@ -62,26 +107,33 @@ export default {
         <div class="form-card">
           <h5 class="fw-bold mb-4"><i class="bi bi-chat-dots-fill text-success me-2"></i>Üzenet küldése</h5>
 
+          <div v-if="success" class="success-box mb-3">
+            <i class="bi bi-check-circle-fill me-2"></i>Üzeneted sikeresen elküldve! Hamarosan felvesszük veled a kapcsolatot.
+          </div>
+          <div v-if="error" class="error-box mb-3">
+            <i class="bi bi-exclamation-circle me-2"></i>{{ error }}
+          </div>
+
           <div class="row g-3">
             <div class="col-md-6">
               <label class="form-label-custom">Keresztnév</label>
-              <input type="text" class="form-input-custom" placeholder="pl. János">
+              <input type="text" class="form-input-custom" v-model="firstName" placeholder="pl. János">
             </div>
             <div class="col-md-6">
               <label class="form-label-custom">Vezetéknév</label>
-              <input type="text" class="form-input-custom" placeholder="pl. Kovács">
+              <input type="text" class="form-input-custom" v-model="lastName" placeholder="pl. Kovács">
             </div>
             <div class="col-12">
               <label class="form-label-custom">E-mail cím</label>
-              <input type="email" class="form-input-custom" placeholder="pelda@email.hu">
+              <input type="email" class="form-input-custom" v-model="email" placeholder="pelda@email.hu">
             </div>
             <div class="col-12">
               <label class="form-label-custom">Üzenet</label>
-              <textarea class="form-input-custom" rows="5" placeholder="Írd ide az üzeneted..."></textarea>
+              <textarea class="form-input-custom" rows="5" v-model="message" placeholder="Írd ide az üzeneted..."></textarea>
             </div>
             <div class="col-12">
               <div class="d-flex align-items-start gap-2">
-                <input type="checkbox" class="form-check-input mt-1" id="check">
+                <input type="checkbox" class="form-check-input mt-1" id="check" v-model="agreed">
                 <label class="form-check-label small text-muted" for="check">
                   Elfogadom az
                   <RouterLink to="/privacy-policy" class="text-success fw-bold">Adatvédelmi Tájékoztatót</RouterLink>
@@ -89,8 +141,10 @@ export default {
               </div>
             </div>
             <div class="col-12">
-              <button class="send-btn w-100">
-                <i class="bi bi-send-fill me-2"></i>Küldés
+              <button class="send-btn w-100" @click="sendMessage" :disabled="sending">
+                <span v-if="sending" class="spinner-border spinner-border-sm me-2"></span>
+                <i v-else class="bi bi-send-fill me-2"></i>
+                Küldés
               </button>
             </div>
           </div>
@@ -271,4 +325,13 @@ textarea.form-input-custom { resize: vertical; }
 }
 .accordion-button:focus { box-shadow: none; }
 .accordion-button::after { filter: none; }
+
+.success-box {
+  background: #e6f4ea; color: #198754;
+  border-radius: 10px; padding: 12px 16px; font-size: 13px; font-weight: 500;
+}
+.error-box {
+  background: #fce8e6; color: #d93025;
+  border-radius: 10px; padding: 12px 16px; font-size: 13px;
+}
 </style>

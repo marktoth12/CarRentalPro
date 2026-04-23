@@ -87,10 +87,37 @@ export default {
       }
     }
 
+    const msgText = ref('')
+    const msgSending = ref(false)
+    const msgSuccess = ref(false)
+    const msgError = ref(null)
+
+    const sendMessage = async () => {
+      msgError.value = null
+      if (!msgText.value.trim()) { msgError.value = 'Az üzenet nem lehet üres!'; return }
+      const token = localStorage.getItem('token')
+      if (!token) { msgError.value = 'Az üzenet küldéséhez be kell jelentkezned!'; return }
+      msgSending.value = true
+      try {
+        await axios.post('http://localhost:8000/api/vehicle-messages', {
+          vehicle_id: vehicle.value.vehicle_id,
+          message: msgText.value
+        }, { headers: { Authorization: `Bearer ${token}` } })
+        msgSuccess.value = true
+        msgText.value = ''
+        setTimeout(() => msgSuccess.value = false, 3000)
+      } catch (err) {
+        msgError.value = err.response?.data?.message ?? 'Hiba az üzenet küldése során.'
+      } finally {
+        msgSending.value = false
+      }
+    }
+
     return {
       vehicle, loading, error, startDate, endDate, bookingLoading,
       similarVehicles, activeImage, images, totalPrice, totalDays,
-      fuelLabel, fuelIcon, formatFt, bookVehicle
+      fuelLabel, fuelIcon, formatFt, bookVehicle,
+      msgText, msgSending, msgSuccess, msgError, sendMessage
     }
   }
 }
@@ -178,9 +205,46 @@ export default {
           </div>
 
           <!-- Leírás -->
-          <div v-if="vehicle.description" class="desc-box">
+          <div v-if="vehicle.description" class="desc-box mb-4">
             <h6 class="fw-bold text-success mb-2"><i class="bi bi-info-circle me-1"></i> Leírás</h6>
             <p class="text-muted mb-0">{{ vehicle.description }}</p>
+          </div>
+
+          <!-- Bérbeadó info -->
+          <div class="agent-box mb-4">
+            <h6 class="fw-bold mb-3"><i class="bi bi-person-badge text-success me-2"></i>Bérbeadó</h6>
+            <div class="d-flex align-items-center gap-3">
+              <div class="agent-avatar">
+                <i class="bi bi-person-fill"></i>
+              </div>
+              <div>
+                <div class="fw-bold">{{ vehicle.rentalAgent ? `${vehicle.rentalAgent.first_name} ${vehicle.rentalAgent.last_name}` : 'Bérbeadó' }}</div>
+                <div class="text-muted small">Regisztrált bérbeadó</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Üzenet küldése -->
+          <div class="msg-box">
+            <h6 class="fw-bold mb-3"><i class="bi bi-chat-dots text-success me-2"></i>Üzenet a bérbeadónak</h6>
+            <div v-if="msgSuccess" class="msg-success mb-2">
+              <i class="bi bi-check-circle-fill me-1"></i>Üzeneted elküldve!
+            </div>
+            <div v-if="msgError" class="msg-error mb-2">
+              <i class="bi bi-exclamation-circle me-1"></i>{{ msgError }}
+            </div>
+            <textarea
+                v-model="msgText"
+                class="booking-input mb-2"
+                rows="3"
+                placeholder="Kérdésed a járművel kapcsolatban..."
+                style="resize:vertical"
+            ></textarea>
+            <button class="book-btn" @click="sendMessage" :disabled="msgSending">
+              <span v-if="msgSending" class="spinner-border spinner-border-sm me-2"></span>
+              <i v-else class="bi bi-send me-2"></i>
+              Küldés
+            </button>
           </div>
 
         </div>
@@ -351,6 +415,26 @@ export default {
 /* HASONLÓ */
 .similar-price { font-size: 14px; font-weight: 700; color: #198754; }
 .similar-per { font-size: 13px; font-weight: 400; color: #aaa; }
+
+/* BÉRBEADÓ */
+.agent-box {
+  background: white; border-radius: 14px; padding: 1.1rem 1.25rem;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+.agent-avatar {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: #f0fdf4; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.agent-avatar i { font-size: 1.4rem; color: #198754; }
+
+/* ÜZENET */
+.msg-box {
+  background: white; border-radius: 14px; padding: 1.1rem 1.25rem;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+.msg-success { background: #e6f4ea; color: #198754; border-radius: 8px; padding: 8px 12px; font-size: 13px; }
+.msg-error   { background: #fce8e6; color: #d93025; border-radius: 8px; padding: 8px 12px; font-size: 13px; }
 .similar-btn { background: #198754; color: white; border: none; }
 .similar-btn:hover { background: #198754; color: white; opacity: 0.9; }
 .similar-card {

@@ -12,6 +12,7 @@ export default {
     const activeTab = ref('overview')
 
     const editingVehicle = ref(null)
+    const agentMessages = ref([])
     const showEditModal = ref(false)
     const saveLoading = ref(false)
 
@@ -156,6 +157,10 @@ export default {
           }
         })
 
+        // Üzenetek lekérése
+        const msgRes = await axios.get('http://127.0.0.1:8000/api/vehicle-messages', { headers: getHeaders() })
+        agentMessages.value = Array.isArray(msgRes.data) ? msgRes.data : []
+
         stats.value.totalVehicles = vehicles.value.length
         stats.value.activeRentals = rentals.value.filter(r =>
             ['pending_approval', 'approved', 'in_progress'].includes(r.rental_status)
@@ -291,6 +296,24 @@ export default {
       }
     }
 
+    const markAgentMsgRead = async (id) => {
+      try {
+        await axios.patch(`http://127.0.0.1:8000/api/vehicle-messages/${id}/read`, {}, { headers: getHeaders() })
+        const msg = agentMessages.value.find(m => m.id === id)
+        if (msg) msg.is_read = true
+      } catch {}
+    }
+
+    const deleteAgentMsg = async (id) => {
+      if (!confirm('Biztosan törlöd ezt az üzenetet?')) return
+      try {
+        await axios.delete(`http://127.0.0.1:8000/api/vehicle-messages/${id}`, { headers: getHeaders() })
+        agentMessages.value = agentMessages.value.filter(m => m.id !== id)
+      } catch {
+        alert('Hiba a törlés során.')
+      }
+    }
+
     onMounted(fetchData)
 
     return {
@@ -299,6 +322,7 @@ export default {
       editingVehicle, showEditModal, saveLoading,
       openEdit, closeEdit, saveVehicle, deleteVehicle, addImageToVehicle, removeImage,
       approveRental, rejectRental,
+      agentMessages, markAgentMsgRead, deleteAgentMsg,
       showAddModal, addLoading, newVehicle, openAddModal, closeAddModal, addVehicle
     }
   }
@@ -363,6 +387,15 @@ export default {
             <li class="nav-item">
               <button class="nav-link" :class="{ active: activeTab === 'rentals' }" @click="activeTab = 'rentals'">
                 <i class="bi bi-calendar-event me-2"></i>Bérlések
+              </button>
+            </li>
+            <li class="nav-item">
+              <button class="nav-link position-relative" :class="{ active: activeTab === 'messages' }" @click="activeTab = 'messages'">
+                <i class="bi bi-envelope me-2"></i>Üzenetek
+                <span v-if="agentMessages.filter(m => !m.is_read).length > 0"
+                      class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:10px;color:white">
+                  {{ agentMessages.filter(m => !m.is_read).length }}
+                </span>
               </button>
             </li>
 
@@ -513,6 +546,36 @@ export default {
             </div>
           </div>
 
+          <!-- Üzenetek tab -->
+          <div v-if="activeTab === 'messages'" class="fade-in">
+            <h5 class="fw-bold text-success mb-4">Üzenetek</h5>
+            <div v-if="agentMessages.length === 0" class="text-center py-5 border rounded-3 bg-light">
+              <i class="bi bi-envelope fs-1 text-muted mb-3 d-block"></i>
+              <p class="text-muted">Nincsenek üzenetek.</p>
+            </div>
+            <div v-else class="d-flex flex-column gap-3">
+              <div v-for="msg in agentMessages" :key="msg.id" class="agent-msg-card" :class="{ 'agent-msg-unread': !msg.is_read }">
+                <div class="agent-msg-header">
+                  <div>
+                    <span class="fw-bold">{{ msg.sender ? `${msg.sender.first_name} ${msg.sender.last_name}` : '–' }}</span>
+                    <span class="text-muted small ms-2">{{ msg.sender?.email }}</span>
+                    <span class="text-muted small ms-2">· {{ msg.vehicle ? `${msg.vehicle.brand} ${msg.vehicle.model}` : '' }}</span>
+                    <span v-if="!msg.is_read" class="badge bg-warning-soft ms-2" style="font-size:11px">Olvasatlan</span>
+                  </div>
+                  <div class="d-flex align-items-center gap-2">
+                    <span class="text-muted small">{{ msg.created_at?.slice(0,10) }}</span>
+                    <button v-if="!msg.is_read" class="btn btn-sm btn-icon-only" title="Olvasottnak jelöl" @click="markAgentMsgRead(msg.id)">
+                      <i class="bi bi-check2 text-success"></i>
+                    </button>
+                    <button class="btn btn-sm btn-icon-only" title="Törlés" @click="deleteAgentMsg(msg.id)">
+                      <i class="bi bi-trash text-danger"></i>
+                    </button>
+                  </div>
+                </div>
+                <p class="agent-msg-body">{{ msg.message }}</p>
+              </div>
+            </div>
+          </div>
 
         </div>
       </div>
@@ -809,6 +872,14 @@ export default {
   border-color: #198754;
   box-shadow: 0 0 0 3px rgba(25,135,84,0.1);
 }
+
+.agent-msg-card {
+  background: white; border-radius: 14px; padding: 1rem 1.25rem;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05); border-left: 4px solid #dee2e6;
+}
+.agent-msg-unread { border-left-color: #198754; background: #f8fffe; }
+.agent-msg-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; flex-wrap: wrap; gap: 6px; }
+.agent-msg-body { font-size: 14px; color: #444; margin: 0; white-space: pre-wrap; }
 
 /* Képfeltöltés stílusok */
 .image-index-badge {

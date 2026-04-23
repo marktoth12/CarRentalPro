@@ -10,6 +10,7 @@ export default {
     const users = ref([])
     const rentals = ref([])
     const applications = ref([])
+    const messages = ref([])
     const loading = ref(true)
     const activeTab = ref('overview')
 
@@ -108,6 +109,10 @@ export default {
         const appRes = await axios.get('http://127.0.0.1:8000/api/rentalagent-applications', { headers: getHeaders() })
         applications.value = Array.isArray(appRes.data) ? appRes.data : appRes.data?.data ?? []
 
+        // Üzenetek lekérése
+        const msgRes = await axios.get('http://127.0.0.1:8000/api/contact-messages', { headers: getHeaders() })
+        messages.value = Array.isArray(msgRes.data) ? msgRes.data : []
+
         stats.value.totalVehicles = vehicles.value.length
         stats.value.totalUsers = users.value.length
         stats.value.totalRentals = rentals.value.length
@@ -138,6 +143,25 @@ export default {
         await fetchData()
       } catch (err) {
         alert(err.response?.data?.message ?? 'Hiba az elutasítás során.')
+      }
+    }
+
+    // --- Üzenet műveletek ---
+    const markMessageRead = async (id) => {
+      try {
+        await axios.patch(`http://127.0.0.1:8000/api/contact-messages/${id}/read`, {}, { headers: getHeaders() })
+        const msg = messages.value.find(m => m.id === id)
+        if (msg) msg.is_read = true
+      } catch {}
+    }
+
+    const deleteMessage = async (id) => {
+      if (!confirm('Biztosan törlöd ezt az üzenetet?')) return
+      try {
+        await axios.delete(`http://127.0.0.1:8000/api/contact-messages/${id}`, { headers: getHeaders() })
+        messages.value = messages.value.filter(m => m.id !== id)
+      } catch (err) {
+        alert('Hiba a törlés során.')
       }
     }
 
@@ -190,6 +214,7 @@ export default {
       apiStatus, statusChecking, checkApiStatus,
       formatFt, statusLabel, statusClass, roleLabel, roleClass,
       approveApplication, rejectApplication,
+      messages, markMessageRead, deleteMessage,
       approveVehicle, rejectVehicle, deleteVehicle, deleteUser
     }
   }
@@ -274,6 +299,15 @@ export default {
                 <span v-if="applications.filter(a => a.status === 'pending').length > 0"
                       class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:10px">
                   <span style="color:white">{{ applications.filter(a => a.status === 'pending').length }}</span>
+                </span>
+              </button>
+            </li>
+            <li class="nav-item">
+              <button class="nav-link position-relative" :class="{ active: activeTab === 'messages' }" @click="activeTab = 'messages'">
+                <i class="bi bi-envelope me-2"></i>Üzenetek
+                <span v-if="messages.filter(m => !m.is_read).length > 0"
+                      class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:10px">
+                  <span style="color:white">{{ messages.filter(m => !m.is_read).length }}</span>
                 </span>
               </button>
             </li>
@@ -528,6 +562,40 @@ export default {
             </div>
           </div>
 
+
+          <!-- Üzenetek -->
+          <div v-if="activeTab === 'messages'" class="fade-in">
+            <h5 class="fw-bold text-success mb-4">Üzenetek</h5>
+            <div v-if="loading" class="text-center py-5"><div class="spinner-border text-success"></div></div>
+            <div v-else-if="messages.length === 0" class="text-center py-5 border rounded-3 bg-light">
+              <i class="bi bi-envelope fs-1 text-muted mb-3 d-block"></i>
+              <p class="text-muted">Nincsenek üzenetek.</p>
+            </div>
+            <div v-else class="row g-3">
+              <div class="col-12" v-for="msg in messages" :key="msg.id">
+                <div class="msg-card" :class="{ 'msg-unread': !msg.is_read }">
+                  <div class="msg-header">
+                    <div>
+                      <span class="fw-bold">{{ msg.first_name }} {{ msg.last_name }}</span>
+                      <span class="text-muted small ms-2">{{ msg.email }}</span>
+                      <span v-if="!msg.is_read" class="badge bg-warning-soft ms-2" style="font-size:11px">Olvasatlan</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                      <span class="text-muted small">{{ msg.created_at?.slice(0,10) }}</span>
+                      <button v-if="!msg.is_read" class="btn btn-sm btn-icon-only" title="Olvasottnak jelöl" @click="markMessageRead(msg.id)">
+                        <i class="bi bi-check2 text-success"></i>
+                      </button>
+                      <button class="btn btn-sm btn-icon-only" title="Törlés" @click="deleteMessage(msg.id)">
+                        <i class="bi bi-trash text-danger"></i>
+                      </button>
+                    </div>
+                  </div>
+                  <p class="msg-body">{{ msg.message }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>
@@ -553,4 +621,12 @@ export default {
 .btn-icon-only { background: #f8f9fa; border-radius: 8px; width: 35px; height: 35px; border: none; display: inline-flex; align-items: center; justify-content: center; }
 .fade-in { animation: fadeIn 0.3s ease-in; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+.msg-card {
+  background: white; border-radius: 14px; padding: 1.1rem 1.25rem;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05); border-left: 4px solid #dee2e6;
+}
+.msg-unread { border-left-color: #198754; background: #f8fffe; }
+.msg-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; flex-wrap: wrap; gap: 6px; }
+.msg-body { font-size: 14px; color: #444; margin: 0; white-space: pre-wrap; }
 </style>
