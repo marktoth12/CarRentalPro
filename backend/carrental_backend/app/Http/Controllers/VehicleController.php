@@ -17,13 +17,20 @@ class VehicleController extends Controller
                 return response()->json(['error' => 'Unauthorized'], 401);
             }
 
-            $vehicles = Vehicle::where('rentalagent_id', $user->user_id)
-                ->with('images')
-                ->get();
+            // Admin: az összes jármű
+            if ($user->role === 'admin') {
+                return response()->json(Vehicle::with('images')->get());
+            }
 
-            return response()->json($vehicles);
+            // Rentalagent: csak a saját járművei
+            return response()->json(
+                Vehicle::where('rentalagent_id', $user->user_id)
+                    ->with('images')
+                    ->get()
+            );
         }
 
+        // Publikus lista: csak jóváhagyott járművek
         return response()->json(Vehicle::where('is_approved', 1)->get());
     }
 
