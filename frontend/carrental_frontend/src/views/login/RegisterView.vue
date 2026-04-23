@@ -41,6 +41,17 @@ export default {
         return
       }
 
+      // Életkor ellenőrzés – minimum 18 év
+      const birth = new Date(dateOfBirth.value)
+      const today = new Date()
+      const age = today.getFullYear() - birth.getFullYear()
+      const monthDiff = today.getMonth() - birth.getMonth()
+      const isUnder18 = age < 18 || (age === 18 && (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())))
+      if (isUnder18) {
+        error.value = 'A regisztrációhoz legalább 18 évesnek kell lenned!'
+        return
+      }
+
       loading.value = true
       try {
         const res = await axios.post('http://127.0.0.1:8000/api/register', {
@@ -148,7 +159,7 @@ export default {
             </div>
             <div class="col-12">
               <label class="reg-label">Születési dátum</label>
-              <input type="date" class="reg-input" v-model="dateOfBirth" />
+              <input type="date" class="reg-input" v-model="dateOfBirth" :max="new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().slice(0,10)" />
             </div>
             <div class="col-12">
               <label class="reg-label">Jogosítvány száma</label>
