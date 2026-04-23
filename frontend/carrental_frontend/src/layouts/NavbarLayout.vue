@@ -103,6 +103,11 @@ export default {
                   Bérbeadó felület
                 </RouterLink>
               </li>
+              <li v-if="user?.role === 'rentalagent'">
+                <RouterLink class="dropdown-item" to="/my-rentals" @click="closeDropdown">
+                  Saját bérlések
+                </RouterLink>
+              </li>
               <li v-if="user?.role === 'admin'">
                 <RouterLink class="dropdown-item" to="/admin" @click="closeDropdown">
                   Admin felület
