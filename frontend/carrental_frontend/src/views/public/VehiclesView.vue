@@ -139,7 +139,7 @@ export default {
             Ár: {{ formatPrice(minPrice) }} - {{ formatPrice(maxPrice) }}
           </label>
 
-          <input type="range" class="form-range mb-2" v-model.number="minPrice" min="0" max="500">
+          <input type="range" class="form-range mb-2" v-model.number="minPrice" min="0" max="100000">
           <input type="range" class="form-range" v-model.number="maxPrice" min="0" max="1000000">
 
         </div>
