@@ -31,12 +31,14 @@ class VehicleController extends Controller
         }
 
         // Publikus lista: csak jóváhagyott járművek
-        return response()->json(Vehicle::where('is_approved', 1)->get());
+        return response()->json(Vehicle::where('is_approved', 1)->with('images')->get());
     }
 
     public function show($id)
     {
-        return response()->json(Vehicle::where('vehicle_id', $id)->firstOrFail());
+        return response()->json(
+            Vehicle::where('vehicle_id', $id)->with('images')->firstOrFail()
+        );
     }
 
     public function store(Request $request)
