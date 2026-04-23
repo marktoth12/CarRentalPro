@@ -12,6 +12,7 @@ use App\Http\Controllers\RentalPhotoController;
 use App\Http\Controllers\UserController;
 
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/register', [AuthController::class, 'register']);
 Route::get('/vehicles', [VehicleController::class, 'index']);
 Route::get('/vehicles/{id}', [VehicleController::class, 'show']);
 
