@@ -261,7 +261,12 @@ export default {
           await fetchData()
           showToast('Felhasználó törölve.')
         } catch (err) {
-          showToast(err.response?.data?.message ?? 'Törlési hiba történt.', 'error')
+          // 23000: foreign key constraint – a felhasználónak van kapcsolódó adata
+          if (err.response?.status === 500 && err.response?.data?.message?.includes('Integrity constraint')) {
+            showToast('A felhasználó nem törölhető, mert aktív bérlése vagy kiadott járműve van folyamatban.', 'error')
+          } else {
+            showToast(err.response?.data?.message ?? 'Törlési hiba történt.', 'error')
+          }
         }
       })
     }
