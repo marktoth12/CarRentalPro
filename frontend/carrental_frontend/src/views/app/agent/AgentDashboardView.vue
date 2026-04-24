@@ -26,7 +26,7 @@ export default {
      */
     const showToast = (message, type = 'success') => {
       toast.value = { show: true, message, type }
-      setTimeout(() => toast.value.show = false, 3000)
+      setTimeout(() => toast.value.show = false, 5000)
     }
 
     /**
@@ -198,9 +198,13 @@ export default {
         agentMessages.value = Array.isArray(msgRes.data) ? msgRes.data : []
 
         stats.value.totalVehicles = vehicles.value.length
+
+        // Csak approved/in_progress bérlések számítanak a flotta kihasználtsághoz (pending nem)
         stats.value.activeRentals = rentals.value.filter(r =>
-            ['pending_approval', 'approved', 'in_progress'].includes(r.rental_status)
+            ['approved', 'in_progress'].includes(r.rental_status) &&
+            new Date(r.end_date) > now
         ).length
+
         // Csak jóváhagyott/befejezett bérlések bevétele
         const paidRentals = rentals.value.filter(r => ['approved', 'in_progress', 'completed'].includes(r.rental_status))
         stats.value.totalRevenue = paidRentals.reduce((sum, r) => sum + Number(r.total_price || 0), 0)
@@ -436,8 +440,12 @@ export default {
               </button>
             </li>
             <li class="nav-item">
-              <button class="nav-link" :class="{ active: activeTab === 'rentals' }" @click="activeTab = 'rentals'">
+              <button class="nav-link position-relative" :class="{ active: activeTab === 'rentals' }" @click="activeTab = 'rentals'">
                 <i class="bi bi-calendar-event me-2"></i>Bérlések
+                <span v-if="rentals.filter(r => r.rental_status === 'pending_approval').length > 0"
+                      class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:10px;color:white">
+                  {{ rentals.filter(r => r.rental_status === 'pending_approval').length }}
+                </span>
               </button>
             </li>
             <li class="nav-item">
@@ -520,7 +528,7 @@ export default {
                     </span>
                   </div>
                   <div class="ov-progress-bar">
-                    <div class="ov-progress-fill" :style="{ width: (stats.totalVehicles > 0 ? (stats.activeRentals/stats.totalVehicles)*100 : 0) + '%' }"></div>
+                    <div class="ov-progress-fill" :style="{ width: (stats.totalVehicles > 0 ? Math.min((stats.activeRentals/stats.totalVehicles)*100, 100) : 0) + '%' }"></div>
                   </div>
                 </div>
               </div>

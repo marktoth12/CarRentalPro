@@ -25,7 +25,7 @@ export default {
      */
     const showToast = (message, type = 'success') => {
       toast.value = { show: true, message, type }
-      setTimeout(() => toast.value.show = false, 3000)
+      setTimeout(() => toast.value.show = false, 5000)
     }
 
     /**
@@ -157,7 +157,7 @@ export default {
         stats.value.totalVehicles = vehicles.value.length
         stats.value.totalUsers = users.value.length
         stats.value.totalRentals = rentals.value.length
-        stats.value.pendingApprovals = applications.value.filter(a => a.status === 'pending').length
+        stats.value.pendingApprovals = vehicles.value.filter(v => !v.is_approved).length
 
       } catch (err) {
         console.error('Admin fetch hiba:', err.response?.status, err.response?.data)
@@ -343,8 +343,12 @@ export default {
               </button>
             </li>
             <li class="nav-item">
-              <button class="nav-link" :class="{ active: activeTab === 'vehicles' }" @click="activeTab = 'vehicles'">
+              <button class="nav-link position-relative" :class="{ active: activeTab === 'vehicles' }" @click="activeTab = 'vehicles'">
                 <i class="bi bi-car-front me-2"></i>Járművek
+                <span v-if="vehicles.filter(v => !v.is_approved).length > 0"
+                      class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:10px">
+                  <span style="color:white">{{ vehicles.filter(v => !v.is_approved).length }}</span>
+                </span>
               </button>
             </li>
             <li class="nav-item">
@@ -449,7 +453,7 @@ export default {
                     </div>
                   </div>
                   <div class="d-flex align-items-center gap-2">
-                    <span :class="['badge', v.is_approved ? 'bg-primary-soft' : 'bg-warning-soft']">
+                    <span :class="['badge', v.is_approved ? 'bg-primary-soft' : 'bg-danger-soft']">
                       {{ v.is_approved ? 'Jóváhagyva' : 'Függőben' }}
                     </span>
                     <span :class="['badge', v.is_available ? 'bg-success-soft' : 'bg-danger-soft']">
