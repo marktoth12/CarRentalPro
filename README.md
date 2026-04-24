@@ -2,6 +2,67 @@
 
 Modern autóbérlő webalkalmazás, amely lehetővé teszi felhasználók számára járművek böngészését és bérlését, bérbeadók számára flottájuk kezelését, adminisztrátorok számára pedig a teljes rendszer felügyeletét.
 
+---
+
+## Telepítés és indítás
+
+### Követelmények
+
+- PHP 8.1+
+- Composer
+- Node.js 18+ és npm
+- MySQL vagy SQLite
+---
+
+### Szerver indítás
+
+Két terminálablak kinyitása szükséges, és a párhuzamos futtatása a backend és frontend szervereknek a lenti parancsokkal.
+
+---
+
+### Backend (Laravel)
+
+```bash
+cd backend
+cd carrental_backend
+ 
+# Telepítés
+composer install
+ 
+# Környezeti fájl másolása és szerkesztése
+cp .env.example .env
+
+# Adatbázis-kapcsolat beálltása az .env fájlba
+ 
+# Alkalmazáskulcs generálása
+php artisan key:generate
+ 
+# Adatbázis migration és kezdeti adatok betöltése
+php artisan migrate --seed
+ 
+# Szerver indítása
+php artisan serve
+```
+
+A backend alapértelmezetten a `http://localhost:8000` címen érhető el.
+
+### Frontend (Vue.js)
+
+```bash
+cd frontend
+cd carrental_frontend
+ 
+# Telepítés
+npm install
+ 
+# Szerver indítása
+npm run dev
+```
+
+A frontend alapértelmezetten a `http://localhost:5173` címen érhető el.
+
+---
+
 ## Funkciók
 
 ### Vendég felhasználó
