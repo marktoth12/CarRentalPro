@@ -34,6 +34,9 @@ composer install
 cp .env.example .env
 
 # Adatbázis-kapcsolat beálltása az .env fájlba
+
+# Sanctum telepítése ha szükséges
+php artisan vendor:publish --provider="Laravel\Sanctum\SanctumServiceProvider"
  
 # Alkalmazáskulcs generálása
 php artisan key:generate
