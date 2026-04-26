@@ -34,6 +34,7 @@ composer install
 cp .env.example .env
 
 # Adatbázis-kapcsolat beálltása az .env fájlba
+Adatbázis neve: carrentalpro_db.sql
 
 # Sanctum telepítése ha szükséges
 php artisan vendor:publish --provider="Laravel\Sanctum\SanctumServiceProvider"
