@@ -2,6 +2,10 @@
 
 Modern autóbérlő webalkalmazás, amely lehetővé teszi felhasználók számára járművek böngészését és bérlését, bérbeadók számára flottájuk kezelését, adminisztrátorok számára pedig a teljes rendszer felügyeletét.
 
+### Készítette:
+Petró Dominik
+Tóth Márk
+
 ---
 
 ## Telepítés és indítás
